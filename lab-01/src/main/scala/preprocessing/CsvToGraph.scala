@@ -4,13 +4,11 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
-
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.util.Try
-
-import cats.effect._
-import cats.implicits._
-
+import scala.util.Using
+import cats.effect.*
+import cats.implicits.*
 import domain.BusConnectionSample
 import domain.Graph
 import domain.Stop
@@ -21,6 +19,9 @@ import fs2.io.file.Files
 import fs2.io.file.Flags
 import fs2.io.file.Path
 import fs2.text
+import boopickle.Default.*
+
+import java.nio.ByteBuffer
 
 object CsvToGraph:
 
@@ -50,23 +51,20 @@ object CsvToGraph:
           .updatedWith(busConnectionSample.endStop)(_.getOrElse(Set.empty).some)
       }
 
-  private def serialize(filePath: Path, obj: AnyRef): IO[Unit] =
-    IO {
-      val file = filePath.toNioPath.toFile
-      if (!file.exists()) file.createNewFile()
-      val fos = new FileOutputStream(filePath.toString)
-      val oos = new ObjectOutputStream(fos)
-      try oos.writeObject(obj)
-      finally {
-        oos.close()
-        fos.close()
-      }
+  private def cacheObjects(path: Path): Pipe[IO, Graph, Graph] = stream =>
+    stream.evalTap { connections =>
+      val bytes = Pickle.intoBytes(connections)
+      IO.fromTry(
+        Using(new FileOutputStream(path.toString)) { fos =>
+          fos.write(bytes.array())
+        }
+      )
     }
 
-  private def cacheObjects(path: Path): Pipe[IO, Graph, Graph] = stream => stream.evalTap(connections => serialize(path, connections))
-
-  private def readSerialized[T](path: Path): Option[T] =
-    Try(new ObjectInputStream(new FileInputStream(path.toString)).readObject().asInstanceOf[T]).toOption
+  private def readSerialized[T: Pickler]( path: Path ): IO[T] =
+    Files[IO].readAll(path).compile.to(Array).map { bytes =>
+      Unpickle[T].fromBytes(ByteBuffer.wrap(bytes))
+    }
 
   private def readAndCache(data: String, cachePath: Path) =
     Files[IO]
@@ -79,7 +77,5 @@ object CsvToGraph:
       .compile
       .lastOrError
 
-  def getCachedGraphOrReadAndCache(data: String, cachePath: Path): IO[Graph] = {
-    val a = readSerialized[Graph](cachePath)
-    a.fold(readAndCache(data, cachePath))(_.pure[IO])
-  }
+  def getCachedGraphOrReadAndCache(data: String, cachePath: Path): IO[Graph] =
+    readSerialized[Graph](cachePath).handleErrorWith(_ => readAndCache(data, cachePath))
