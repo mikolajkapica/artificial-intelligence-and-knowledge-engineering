@@ -1,6 +1,6 @@
-val toolkitV = "0.1.29"
-val toolkit = "org.typelevel" %% "toolkit" % toolkitV
-val toolkitTest = "org.typelevel" %% "toolkit-test" % toolkitV
+val toolkitVersion = "0.1.29"
+val scalacheckVersion = "1.18.1"
+val munitScalacheckVersion = "1.1.0"
 
 inThisBuild(
   List(
@@ -12,5 +12,9 @@ inThisBuild(
   )
 )
 
-libraryDependencies += toolkit
-libraryDependencies += (toolkitTest % Test)
+libraryDependencies ++= Seq(
+  "org.typelevel" %% "toolkit" % toolkitVersion,
+  "org.typelevel" %% "toolkit-test" % toolkitVersion % Test,
+  "org.scalacheck" %% "scalacheck" % scalacheckVersion % Test,
+  "org.scalameta" %% "munit-scalacheck" % munitScalacheckVersion % Test,
+)

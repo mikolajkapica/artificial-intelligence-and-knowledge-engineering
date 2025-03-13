@@ -9,6 +9,7 @@ insert_final_newline = true
 max_line_length = 120
 tab_width = 4
 
-[{*.conf,*.yml}]
+[{*.scala,*.conf,*.yml}]
 indent_size = 2
 tab_width = 2
+
