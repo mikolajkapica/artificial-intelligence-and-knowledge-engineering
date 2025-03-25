@@ -1,39 +1,47 @@
 package algorithms
 
 import scala.collection.mutable
-
 import cats.Eq
-import cats.syntax.eq._
-import cats.syntax.option._
-
+import cats.syntax.eq.*
+import cats.syntax.option.*
+import domain.Connection
+import domain.Graph
 import domain.Stop
 
-object AStar {
+object AStarImplementation {
 
-  private def reconstructPath[Node](node: Node, parent: collection.Map[Node, Node]): List[Node] =
-    if (!parent.contains(node)) List(node)
-    else node :: reconstructPath(parent(node), parent)
+  private def reconstructPath(
+    node: Stop,
+    parents: collection.Map[Stop, Stop],
+  ): List[Connection] =
+    parents.get(node).fold(List(node))(parent => node :: reconstructPath(parent, parents)).reverse
 
-  def aStar[Node: Eq](
-    start: Node,
-    end: Node,
-    neighbors: Node => Set[Node],
-    cost: (Node, Node) => Double,
-    heuristic: (Node, Node) => Double,
-  ): Option[List[Node]] = {
+  def run(
+    start: Stop,
+    end: Stop,
+    graph: Graph,
+  ): Option[PathFindingResult] = {
+
+    val neighbors = graph.apply.andThen(_.map(_.endStop))
+    val cost = timeCost(graph)
+    val heuristic = lengthHeuristic
+
     val gScore = mutable.Map(start -> 0.0)
     val hScore = mutable.Map(start -> heuristic(start, end)) // if i understand correctly
     val fScore = mutable.Map(start -> (gScore(start) + hScore(start)))
     val opened = mutable.Set(start)
-    val closed = mutable.Set.empty[Node]
-    val parent = mutable.Map.empty[Node, Node]
+    val closed = mutable.Set.empty[Stop]
+    val parents = mutable.Map.empty[Stop, Stop]
 
     // scalafix:off DisableSyntax.while
     while (opened.nonEmpty) {
       val node = opened.minBy(fScore)
 
       // scalafix:off DisableSyntax.return
-      if (node === end) return reconstructPath(node, parent).some
+      if (node === end) return PathFindingResult(
+        path = reconstructPath(node, parents),
+        cost = gScore(end)
+      )
       else {
 
         opened.remove(node)
@@ -45,18 +53,17 @@ object AStar {
             hScore.update(nextNode, heuristic(nextNode, end))
             gScore.updateWith(nextNode)(scoreOpt => scoreOpt.map(_ + cost(node, nextNode)).orElse(Double.PositiveInfinity.some))
             fScore.updateWith(nextNode)(scoreOpt => scoreOpt.map(_ + hScore(nextNode)).orElse(Double.PositiveInfinity.some))
-            parent(nextNode) = node
+            parents(nextNode) = node
           } else if (gScore(nextNode) > gScore(node) + cost(node, nextNode)) {
             gScore.updateWith(nextNode)(scoreOpt => scoreOpt.map(_ + cost(node, nextNode)))
             fScore.updateWith(nextNode)(scoreOpt => scoreOpt.map(_ + hScore(nextNode)).orElse(Double.PositiveInfinity.some))
-            parent.update(nextNode, nextNode)
+            parents.update(nextNode, nextNode)
             if (closed.contains(nextNode)) {
               opened.add(nextNode)
               closed.remove(nextNode)
             }
           }
       }
-
     }
 
     None

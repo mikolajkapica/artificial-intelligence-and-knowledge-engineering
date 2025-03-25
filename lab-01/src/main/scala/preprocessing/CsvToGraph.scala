@@ -1,31 +1,28 @@
 package preprocessing
 
-import java.io.FileInputStream
-import java.io.FileOutputStream
-import java.io.ObjectInputStream
-import java.io.ObjectOutputStream
-import scala.concurrent.duration.*
-import scala.util.Try
-import scala.util.Using
+import boopickle.*
+import boopickle.Default.*
 import cats.effect.*
 import cats.implicits.*
-import domain.BusConnectionSample
+import domain.Connection
 import domain.Graph
 import domain.Stop
-import fs2.Pipe
-import fs2.Stream
 import fs2.data.csv.decodeUsingHeaders
 import fs2.io.file.Files
 import fs2.io.file.Flags
 import fs2.io.file.Path
+import fs2.Pipe
+import fs2.Stream
 import fs2.text
-import boopickle.Default.*
 
+import java.io.FileOutputStream
 import java.nio.ByteBuffer
+import scala.concurrent.duration.*
+import scala.util.Using
 
 object CsvToGraph:
 
-  private def showProcessedCount[F[_]: LiftIO: Concurrent: Temporal: Clock, A]: Pipe[F, A, A] = stream =>
+  private def showProcessedCount[F[_]: LiftIO: Temporal, A]: Pipe[F, A, A] = stream =>
     Stream.eval(Ref[F].of(0)).flatMap { count =>
       stream
         .chunks
@@ -43,9 +40,9 @@ object CsvToGraph:
         )
     }
 
-  private def createGraph[F[_]]: Pipe[F, BusConnectionSample, Graph] = stream =>
+  private def createGraph[F[_]]: Pipe[F, Connection, Graph] = stream =>
     stream
-      .fold(Map.empty[Stop, Set[BusConnectionSample]]) { case (graph, busConnectionSample) =>
+      .fold(Map.empty[Stop, Set[Connection]]) { case (graph, busConnectionSample) =>
         graph
           .updatedWith(busConnectionSample.startStop)(valueOpt => (valueOpt.getOrElse(Set.empty) + busConnectionSample).some)
           .updatedWith(busConnectionSample.endStop)(_.getOrElse(Set.empty).some)
@@ -61,7 +58,7 @@ object CsvToGraph:
       )
     }
 
-  private def readSerialized[T: Pickler]( path: Path ): IO[T] =
+  private def readSerialized[T: Pickler](path: Path): IO[T] =
     Files[IO].readAll(path).compile.to(Array).map { bytes =>
       Unpickle[T].fromBytes(ByteBuffer.wrap(bytes))
     }
@@ -70,7 +67,7 @@ object CsvToGraph:
     Files[IO]
       .readAll(Path(data), 1024, Flags.Read)
       .through(text.utf8.decode)
-      .through(decodeUsingHeaders[BusConnectionSample]())
+      .through(decodeUsingHeaders[Connection]())
       .through(showProcessedCount)
       .through(createGraph)
       .through(cacheObjects(cachePath))
