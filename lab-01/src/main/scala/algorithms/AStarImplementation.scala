@@ -7,19 +7,36 @@ import cats.syntax.option.*
 import domain.Connection
 import domain.Graph
 import domain.Stop
+import domain.Time
+
+import scala.annotation.tailrec
 
 object AStarImplementation {
 
   private def reconstructPath(
     node: Stop,
     parents: collection.Map[Stop, Stop],
-  ): List[Connection] =
-    parents.get(node).fold(List(node))(parent => node :: reconstructPath(parent, parents)).reverse
+    graph: Graph,
+  ): List[Connection] = {
+    @tailrec
+    def buildPath(current: Stop, acc: List[Connection]): List[Connection] =
+      parents.get(current) match {
+        case Some(parent) =>
+          graph(parent).find(_.endStop === current) match {
+            case Some(connection) => buildPath(parent, connection :: acc)
+            case None             => throw new IllegalStateException(s"No connection found between $parent and $current")
+          }
+        case None         => acc
+      }
+
+    buildPath(node, List.empty)
+  }
 
   def run(
     start: Stop,
     end: Stop,
     graph: Graph,
+    cost: (Stop, Stop) => Double,
   ): Option[PathFindingResult] = {
 
     val neighbors = graph.apply.andThen(_.map(_.endStop))
@@ -27,7 +44,7 @@ object AStarImplementation {
     val heuristic = lengthHeuristic
 
     val gScore = mutable.Map(start -> 0.0)
-    val hScore = mutable.Map(start -> heuristic(start, end)) // if i understand correctly
+    val hScore = mutable.Map(start -> heuristic(start, end))
     val fScore = mutable.Map(start -> (gScore(start) + hScore(start)))
     val opened = mutable.Set(start)
     val closed = mutable.Set.empty[Stop]
@@ -38,10 +55,13 @@ object AStarImplementation {
       val node = opened.minBy(fScore)
 
       // scalafix:off DisableSyntax.return
-      if (node === end) return PathFindingResult(
-        path = reconstructPath(node, parents),
-        cost = gScore(end)
-      )
+      if (node === end)
+        return Some(
+          PathFindingResult(
+            path = reconstructPath(node, parents, graph),
+            cost = gScore(end),
+          )
+        )
       else {
 
         opened.remove(node)
@@ -57,7 +77,7 @@ object AStarImplementation {
           } else if (gScore(nextNode) > gScore(node) + cost(node, nextNode)) {
             gScore.updateWith(nextNode)(scoreOpt => scoreOpt.map(_ + cost(node, nextNode)))
             fScore.updateWith(nextNode)(scoreOpt => scoreOpt.map(_ + hScore(nextNode)).orElse(Double.PositiveInfinity.some))
-            parents.update(nextNode, nextNode)
+            parents.update(nextNode, node)
             if (closed.contains(nextNode)) {
               opened.add(nextNode)
               closed.remove(nextNode)

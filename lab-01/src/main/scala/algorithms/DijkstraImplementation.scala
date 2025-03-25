@@ -1,8 +1,9 @@
 package algorithms
 
-import cats.Eq
 import cats.implicits.catsSyntaxEq
-import domain.{Connection, Graph, Stop}
+import domain.Connection
+import domain.Graph
+import domain.Stop
 
 import scala.collection.mutable
 
@@ -12,12 +13,12 @@ object DijkstraImplementation {
     start: Stop,
     end: Stop,
     graph: Graph,
+    cost: (Stop, Stop) => Double,
   ): Option[PathFindingResult] = {
     val vertices = graph.keys.toSet
-    val cost = timeCost(graph)
 
     val p = mutable.Map.empty[Stop, Stop]
-    val d = vertices.map(node => (node, if node === start then 0 else Double.PositiveInfinity)).to(collection.mutable.Map)
+    val d = vertices.map(node => (node, if (node === start) 0 else Double.PositiveInfinity)).to(collection.mutable.Map)
     val Q = vertices.to(collection.mutable.Set)
 
     // scalafix:off DisableSyntax.while
@@ -25,13 +26,17 @@ object DijkstraImplementation {
       val u = Q.minBy(d)
       Q.remove(u)
 
-      // idk?
       if (u === end) {
-        return Some(reconstructPath(p.toMap, end))
+        return Some(
+          PathFindingResult(
+            path = reconstructPath(p.toMap, end, graph),
+            cost = d(end),
+          )
+        )
       }
 
       for {
-        v <- vertices if d(v) > d(u) + cost(u, v)
+        v <- graph(u).map(_.endStop) if d(v) > d(u) + cost(u, v)
       } {
         d(v) = d(u) + cost(u, v)
         p(v) = u
@@ -40,17 +45,24 @@ object DijkstraImplementation {
     None
   }
 
-  private def reconstructPath[Node](
-    predecessors: Map[Node, Node],
-    end: Node,
-  ): List[Node] = {
-    val path = mutable.ListBuffer.empty[Node]
+  private def reconstructPath(
+    predecessors: Map[Stop, Stop],
+    end: Stop,
+    graph: Graph,
+  ): List[Connection] = {
+    val path = mutable.ListBuffer.empty[Connection]
     var current = end
+
     while (predecessors.contains(current)) {
-      path.prepend(current)
-      current = predecessors(current)
+      val parent = predecessors(current)
+      graph(parent).find(_.endStop === current) match {
+        case Some(connection) => path.prepend(connection)
+        case None             => throw new IllegalStateException(s"No connection found between $parent and $current")
+      }
+      current = parent
     }
-    path.prepend(current).toList
+
+    path.toList
   }
 
 }

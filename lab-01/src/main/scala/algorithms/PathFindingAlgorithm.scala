@@ -4,13 +4,22 @@ import cats.implicits.catsSyntaxEq
 import domain.Connection
 import domain.Graph
 import domain.Stop
-import domain.Stop
 
-def timeCost(graph: Graph)(a: Stop, b: Stop): Double =
-  graph(a).find(_.endStop === b).map(_.arrivalTime.hour.toDouble).getOrElse(Double.MaxValue)
+type CostFunction = Graph => (Stop, Stop) => Double
 
-def transfersCost(graph: Graph)(a: Stop, b: Stop): Double =
-  if (a === b) 0 else 1
+def timeCost: CostFunction =
+  graph => (a, b) => graph(a).filter(_.endStop === b).map(_.arrivalTime.hour.toDouble).minOption.getOrElse(Double.MaxValue)
+
+def transfersCost: CostFunction =
+  graph => (a, b) => if a === b then 0 else 1
+
+enum Optimization:
+  case Time, Transfers
+
+def cost: Optimization => CostFunction = {
+  case Optimization.Time      => timeCost
+  case Optimization.Transfers => transfersCost
+}
 
 def lengthHeuristic(a: Stop, b: Stop): Double =
   b.coordinates.latitude - a.coordinates.latitude + b.coordinates.longitude - a.coordinates.longitude
@@ -19,8 +28,8 @@ enum PathFindingAlgorithm:
   case AStar, Dijkstra
 
 case class PathFindingResult(
-                              path: List[Connection],
-                              cost: Double,
+  path: List[Connection],
+  cost: Double,
 )
 
 def findShortestPath(
@@ -28,6 +37,7 @@ def findShortestPath(
   graph: Graph,
   start: Stop,
   end: Stop,
+  cost: (Stop, Stop) => Double,
 ): Option[PathFindingResult] = algorithm match
-  case PathFindingAlgorithm.AStar    => AStarImplementation.run(start, end, graph)
-  case PathFindingAlgorithm.Dijkstra => DijkstraImplementation.run(start, end, graph)
+  case PathFindingAlgorithm.AStar    => AStarImplementation.run(start, end, graph, cost)
+  case PathFindingAlgorithm.Dijkstra => DijkstraImplementation.run(start, end, graph, cost)

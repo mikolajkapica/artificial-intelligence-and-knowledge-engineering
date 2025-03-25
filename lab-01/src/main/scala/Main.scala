@@ -1,7 +1,9 @@
 import algorithms.PathFindingAlgorithm.AStar
 import algorithms.PathFindingAlgorithm.Dijkstra
+import algorithms.Optimization
 import algorithms.PathFindingAlgorithm
 import algorithms.PathFindingResult
+import algorithms.cost
 import algorithms.findShortestPath
 import cats.effect.*
 import cats.syntax.all.*
@@ -38,7 +40,7 @@ object Main
     help = "Ending stop",
   )
 
-  private val optimizationOpt: Opts[Char] = Opts
+  private val optimizationOpt: Opts[Optimization] = Opts
     .option[Char](
       long = "optimize",
       short = "o",
@@ -46,8 +48,8 @@ object Main
       help = "Optimization criteria: t (time), p (transfers)",
     )
     .mapValidated {
-      case 't' => 't'.validNel
-      case 'p' => 'p'.validNel
+      case 't' => Optimization.Time.validNel
+      case 'p' => Optimization.Transfers.validNel
       case str => s"Unknown optimization criteria: $str".invalidNel
     }
 
@@ -88,17 +90,22 @@ object Main
   override def main: Opts[IO[ExitCode]] = (startStopOpt, endStopOpt, optimizationOpt, startTimeOpt, algorithmOpt)
     .mapN { (startStop, endStop, optimization, startTime, algorithm) =>
 
-      def startMsg: String =
+      def startMsg: String = {
+        val optimizationShow = optimization match {
+          case Optimization.Time      => "czas"
+          case Optimization.Transfers => "liczba przesiadek"
+        }
         s"""Planowanie podróży z $startStop do $endStop
-           |Kryterium optymalizacji: ${if (optimization === 't') "czas" else "przesiadki"}
+           |Kryterium optymalizacji: $optimizationShow
            |Czas startu: $startTime""".stripMargin
+      }
 
-      def run(graph: Graph): Option[PathFindingResult] =
+      def run(graph: Graph, cost: Graph => (Stop, Stop) => Double): Option[PathFindingResult] =
         (
           graph.keys.find(_.name === startStop),
           graph.keys.find(_.name === endStop),
         ).flatMapN { (start, end) =>
-          findShortestPath(algorithm, graph, start, end)
+          findShortestPath(algorithm, graph, start, end, cost(graph))
         }
 
       def pathMessage(path: List[Connection]): String =
@@ -123,11 +130,8 @@ object Main
         _      <- IO.println(startMsg)
         graph  <- getCachedGraphOrReadAndCache(Data, CachePath)
         startTime = LocalTime.now()
-        result <- run(graph) match {
-                    case Some(PathFindingResult(path, cost)) => IO.pure((path, cost))
-                    case None                                => IO.raiseError(new Exception("Nie znaleziono trasy"))
-                  }
-        (path, cost) = result
+        result <- run(graph, cost(optimization)).fold(IO.raiseError(new Exception("Nie znaleziono trasy")))(_.pure[IO])
+        PathFindingResult(path, cost) = result
         endTime = LocalTime.now()
         _      <- IO.println(pathMessage(path))
         durationMillis = startTime.until(endTime, ChronoUnit.MILLIS)
