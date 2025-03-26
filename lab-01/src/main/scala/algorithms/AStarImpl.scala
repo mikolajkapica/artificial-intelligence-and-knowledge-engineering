@@ -15,7 +15,7 @@ import scala.annotation.tailrec
 
 object AStarImpl {
 
-  private def reconstructPath(
+  private[algorithms] def reconstructPath(
     predecessors: Map[Stop, Connection],
     end: Stop,
   ): List[Connection] = {
@@ -128,7 +128,7 @@ object AStarImpl {
     None
   }
 
-  private def cost(startTime: Time, fromOpt: Option[Connection], through: Connection): Double = {
+  private[algorithms] def cost(startTime: Time, fromOpt: Option[Connection], through: Connection): Double = {
     val travelTime = through.departureTime.to(through.arrivalTime)
     fromOpt.fold(startTime.to(through.departureTime) + travelTime) { from =>
       val waitingTime = from.arrivalTime.to(through.departureTime)
