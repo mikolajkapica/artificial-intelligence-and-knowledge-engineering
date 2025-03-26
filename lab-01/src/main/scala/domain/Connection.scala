@@ -15,7 +15,10 @@ case class Connection(
   arrivalTime: Time,
   startStop: Stop,
   endStop: Stop,
-)
+) {
+  def distance: Double =
+    endStop.distanceTo(startStop)
+}
 
 object Connection:
 

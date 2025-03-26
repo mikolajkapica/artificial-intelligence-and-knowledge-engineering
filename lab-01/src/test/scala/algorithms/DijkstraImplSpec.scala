@@ -28,7 +28,7 @@ class DijkstraImplSpec extends FunSuite {
       D -> conn(C, D, time(10, 45), time(11, 30))
     )
 
-    val path = DijkstraImpl.reconstructPath(predecessors, D, Map.empty)
+    val path = reconstructPath(predecessors, D, Map.empty)
 
     assertEquals(path.size, 3)
     assertEquals(path.head.startStop.name, "A")

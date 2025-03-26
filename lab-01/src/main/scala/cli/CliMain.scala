@@ -34,7 +34,7 @@ object CliMain
             graph                 <- getCachedGraphOrReadAndCache(Data, CachePath)
             startStopParsed: Stop <- Stop.parseIO(config.startStop, graph)
             endStopParsed         <- Stop.parseIO(config.endStop, graph)
-            costFunction = getCostFunction(config.optimization)(graph)
+            costFunction = getCostFunction(config.optimization)
             _                     <- IO.println(startMsg(config.startStop, config.endStop, config.optimization, config.startTime))
             startTime = LocalTime.now()
             result                <- IO.blocking {
@@ -47,24 +47,24 @@ object CliMain
             durationMillis = startTime.until(endTime, ChronoUnit.MILLIS)
             _                     <- IO(System.err.println(resultDataMessage(cost, durationMillis)))
           } yield ExitCode.Success
-        case config: MultipleStopsConfig => IO(ExitCode.Error)
-//          for {
-//            graph                 <- getCachedGraphOrReadAndCache(Data, CachePath)
-//            startStopParsed: Stop <- Stop.parseIO(config.startStop, graph)
-//            endStopParsed         <- config.stopsToVisit.traverse(Stop.parseIO(_, graph))
-//            costFunction = getCostFunction(config.optimization)(graph)
-//            _                     <- IO.println(startMsg(config.startStop, config.stopsToVisit, config.optimization, config.startTime))
-//            startTime = LocalTime.now()
-//            result                <- IO.fromOption {
-//                                       findShortestPath(config.algorithm, graph, startStopParsed, endStopParsed, costFunction)
-//                                     }(new Exception("No path found"))
-//            PathFindingResult(path, cost) = result
-//            endTime = LocalTime.now()
-//            _                     <- IO.println(pathMessage(path))
-//            durationMillis = startTime.until(endTime, ChronoUnit.MILLIS)
-//            _                     <- IO(System.err.println(resultDataMessage(cost, durationMillis)))
-//          } yield ExitCode.Success
+        case config: MultipleStopsConfig =>
+          for {
+            graph                 <- getCachedGraphOrReadAndCache(Data, CachePath)
+            startStopParsed: Stop <- Stop.parseIO(config.startStop, graph)
+            endStopParsed         <- config.stopsToVisit.traverse(Stop.parseIO(_, graph))
+            costFunction = getCostFunction(config.optimization)
+            _                     <- IO.println(startMsg(config.startStop, config.stopsToVisit, config.optimization, config.startTime))
+            startTime = LocalTime.now()
+            result                <- IO.fromOption {
+                                       findShortestPath(config.algorithm, graph, startStopParsed, config.startTime, endStopParsed, costFunction)
+                                     }(new Exception("No path found"))
+            PathFindingResult(path, cost) = result
+            endTime = LocalTime.now()
+            _                     <- IO.println(pathMessage(path))
+            durationMillis = startTime.until(endTime, ChronoUnit.MILLIS)
+            _                     <- IO(System.err.println(resultDataMessage(cost, durationMillis)))
+          } yield ExitCode.Success
       }
-      .map(_.handleErrorWith(ex => IO.println(s"Error: ${ex}").as(ExitCode.Error)))
+//      .map(_.handleErrorWith(ex => IO.println(s"Error: ${ex}").as(ExitCode.Error)))
 
 }

@@ -1,7 +1,5 @@
 package algorithms
 
-import algorithms.DijkstraImpl.cost
-
 import scala.collection.mutable
 import cats.Eq
 import cats.syntax.eq.*
@@ -15,27 +13,12 @@ import scala.annotation.tailrec
 
 object AStarImpl {
 
-  private[algorithms] def reconstructPath(
-    predecessors: Map[Stop, Connection],
-    end: Stop,
-  ): List[Connection] = {
-    val path = mutable.ListBuffer.empty[Connection]
-    var current = end
-
-    while (predecessors.contains(current)) {
-      val connection = predecessors(current)
-      path.prepend(connection)
-      current = connection.startStop
-    }
-
-    path.toList
-  }
-
   def run(
     start: Stop,
     startTime: Time,
     end: Stop,
     graph: Graph,
+    costFunction: CostFunction,
   ): Option[PathFindingResult] = {
     val heuristic = lengthHeuristic
 
@@ -88,7 +71,7 @@ object AStarImpl {
       // 17: for wezel_nastepny in sasiedztwo(wezel) do
       for (connection <- graph(currentNode)) {
         val neighbor = connection.endStop
-        val tentativeGScore = gScore(currentNode) + cost(startTime, predecessors.get(currentNode), connection)
+        val tentativeGScore = gScore(currentNode) + costFunction(startTime, predecessors.get(currentNode), connection)
 
         // 18: if wezel_nastepny not in otwarte and wezel_nastepny not in zamkniete then
         if (!opened.contains(neighbor) && !closed.contains(neighbor)) {
@@ -126,14 +109,6 @@ object AStarImpl {
     }
 
     None
-  }
-
-  private[algorithms] def cost(startTime: Time, fromOpt: Option[Connection], through: Connection): Double = {
-    val travelTime = through.departureTime.to(through.arrivalTime)
-    fromOpt.fold(startTime.to(through.departureTime) + travelTime) { from =>
-      val waitingTime = from.arrivalTime.to(through.departureTime)
-      travelTime + waitingTime
-    }
   }
 
 }

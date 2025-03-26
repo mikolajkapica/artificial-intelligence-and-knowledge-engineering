@@ -15,7 +15,7 @@ object DijkstraImpl {
     startTime: Time,
     end: Stop,
     graph: Graph,
-//    cost: CostFunction,
+    cost: CostFunction,
   ): Option[PathFindingResult] = {
     val vertices = graph.keys.toSet
 
@@ -29,16 +29,9 @@ object DijkstraImpl {
       Q.remove(u)
 
       if (u === end) {
-        return  {
-          if (!p.contains(u)) None
-          else Some(
-            PathFindingResult(
-              path = reconstructPath(p.toMap, end, graph),
-              cost = d(end),
-            )
-          )
-        }
-
+        return 
+          if (!p.contains(u)) None 
+          else Some(PathFindingResult(path = reconstructPath(p.toMap, end), cost = d(end)))
       }
 
       for {
@@ -55,31 +48,6 @@ object DijkstraImpl {
     }
 
     None
-  }
-
-  def reconstructPath(
-    predecessors: Map[Stop, Connection],
-    end: Stop,
-    graph: Graph,
-  ): List[Connection] = {
-    val path = mutable.ListBuffer.empty[Connection]
-    var current = end
-
-    while (predecessors.contains(current)) {
-      val parent = predecessors(current)
-      current = parent.startStop
-      path.prepend(parent)
-    }
-
-    path.toList
-  }
-
-  def cost(startTime: Time, fromOpt: Option[Connection], through: Connection): Double = {
-    val travelTime = through.departureTime.to(through.arrivalTime)
-    fromOpt.fold(startTime.to(through.departureTime) + travelTime) { from =>
-      val waitingTime = from.arrivalTime.to(through.departureTime)
-      travelTime + waitingTime
-    }
   }
 
 }

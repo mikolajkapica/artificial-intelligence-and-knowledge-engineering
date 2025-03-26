@@ -47,7 +47,7 @@ def merge_text_files_recursive(directory_path, output_filename="merged_output.tx
         return False
 
 if __name__ == "__main__":
-    target_directory = r"""C:\Users\mkapica\IdeaProjects\artificial-intelligence-and-knowledge-engineering\lab-01\src\main\scala"""
+    target_directory = r"""C:\Users\mkapica\IdeaProjects\artificial-intelligence-and-knowledge-engineering\lab-01\src\main\scala\domain"""
     output_file = r"""C:\Users\mkapica\IdeaProjects\artificial-intelligence-and-knowledge-engineering\lab-01\merged.txt"""
 
     if output_file:
