@@ -22,14 +22,21 @@ object AStarImpl {
   ): List[Connection] = {
     val path = mutable.ListBuffer.empty[Connection]
     var current = end
+    var visited = Set.empty[Stop] // Track visited stops to detect cycles
 
-    while (predecessors.contains(current)) {
+    while (predecessors.contains(current) && !visited.contains(current)) {
+      visited += current // Mark current stop as visited
       val parent = predecessors(current)
       current = parent.startStop
       path.prepend(parent)
     }
 
-    path.toList
+    // If we exited due to a cycle, return empty path (or handle error)
+    if (visited.contains(current)) {
+      List.empty[Connection] // or throw an exception
+    } else {
+      path.toList
+    }
   }
 
   def cost(startTime: Time, fromOpt: Option[Connection], through: Connection): Double = {
@@ -46,7 +53,6 @@ object AStarImpl {
     end: Stop,
     graph: Graph,
   ): Option[PathFindingResult] = {
-
     val heuristic = lengthHeuristic
 
     val gScore = mutable.Map(start -> 0.0)
@@ -54,15 +60,11 @@ object AStarImpl {
     val fScore = mutable.Map(start -> (gScore(start) + hScore(start)))
     val opened = mutable.Set(start)
     val closed = mutable.Set.empty[Stop]
-
     val parents = mutable.Map.empty[Stop, Connection]
 
-    // scalafix:off DisableSyntax.while
     while (opened.nonEmpty) {
-
       val node = opened.minBy(fScore)
 
-      // scalafix:off DisableSyntax.return
       if (node === end) {
         return Some(
           PathFindingResult(
@@ -86,33 +88,21 @@ object AStarImpl {
                             }
       ) {
         val nextNode = nextConnection.endStop
+        val tentativeGScore = gScore(node) + cost(startTime, parents.get(node), nextConnection)
 
-        if (!opened.contains(nextNode) && !closed.contains(nextNode)) {
+        if (!closed.contains(nextNode)) {
+          if (!opened.contains(nextNode) || tentativeGScore < gScore.getOrElse(nextNode, Double.PositiveInfinity)) {
+            parents.update(nextNode, nextConnection)
+            gScore.update(nextNode, tentativeGScore)
+            hScore.update(nextNode, heuristic(nextNode, end))
+            fScore.update(nextNode, gScore(nextNode) + hScore(nextNode))
 
-          opened.add(nextNode)
-          hScore.update(nextNode, heuristic(nextNode, end))
-          gScore.updateWith(nextNode)(scoreOpt =>
-            scoreOpt
-              .map(_ + cost(startTime, parents.get(node), nextConnection))
-              .orElse(cost(startTime, parents.get(node), nextConnection).some)
-          )
-          fScore.updateWith(nextNode)(scoreOpt => scoreOpt.map(_ + hScore(nextNode)).orElse(hScore.get(nextNode)))
-          parents.update(nextNode, nextConnection)
-
-        } else if (gScore(nextNode) > gScore(node) + cost(startTime, parents.get(node), nextConnection)) {
-
-          gScore.updateWith(nextNode)(scoreOpt => scoreOpt.map(_ + cost(startTime, parents.get(node), nextConnection))) // repeation extract
-          fScore.updateWith(nextNode)(scoreOpt => scoreOpt.map(_ + hScore(nextNode)))
-          parents.update(nextNode, nextConnection)
-
-          if (closed.contains(nextNode)) {
-            opened.add(nextNode)
-            closed.remove(nextNode)
+            if (!opened.contains(nextNode)) {
+              opened.add(nextNode)
+            }
           }
-
         }
       }
-
     }
 
     None
