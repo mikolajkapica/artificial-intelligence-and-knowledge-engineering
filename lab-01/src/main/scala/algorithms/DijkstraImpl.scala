@@ -29,13 +29,15 @@ object DijkstraImpl {
       Q.remove(u)
 
       if (u === end) {
-
-        return Some(
-          PathFindingResult(
-            path = reconstructPath(p.toMap, end, graph),
-            cost = d(end),
+        return  {
+          if (!p.contains(u)) None
+          else Some(
+            PathFindingResult(
+              path = reconstructPath(p.toMap, end, graph),
+              cost = d(end),
+            )
           )
-        )
+        }
 
       }
 
@@ -55,7 +57,7 @@ object DijkstraImpl {
     None
   }
 
-  private def reconstructPath(
+  def reconstructPath(
     predecessors: Map[Stop, Connection],
     end: Stop,
     graph: Graph,

@@ -17,7 +17,7 @@ object TabuSearchKnox {
   // Liczba kroków, które będziemy pamiętać w historii H
   private val HistoryLimit: Int = 10
 
-  private def routeCost(
+   def routeCost(
     route: List[Stop],
     cost: (Stop, Stop) => Double,
   ): Double =
@@ -26,7 +26,7 @@ object TabuSearchKnox {
       case (acc, _)          => acc
     }
 
-  private def generateNeighbors(route: List[Stop]): List[List[Stop]] =
+  def generateNeighbors(route: List[Stop]): List[List[Stop]] =
     if (route.size <= 3) List(route)
     else {
       val indices = 1 until (route.size - 1)
@@ -42,7 +42,7 @@ object TabuSearchKnox {
       }).toList
     }
 
-  private def buildConnectionsList(
+  def buildConnectionsList(
     route: List[Stop],
     graph: Graph,
   ): Option[List[Connection]] =
