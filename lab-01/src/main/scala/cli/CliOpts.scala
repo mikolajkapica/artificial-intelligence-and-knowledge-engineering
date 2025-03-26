@@ -10,6 +10,7 @@ import cats.syntax.all.*
 import cli.CliOpts.ProgramConfig.MultipleStopsConfig
 import cli.CliOpts.ProgramConfig.SingleEndStopConfig
 import com.monovore.decline.Opts
+import domain.Time
 
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -52,7 +53,7 @@ object CliOpts {
       case str => s"Unknown optimization criteria: $str".invalidNel
     }
 
-  private val startTimeOpt: Opts[LocalTime] = Opts
+  private val startTimeOpt: Opts[Time] = Opts
     .option[String](
       long = "time",
       short = "t",
@@ -60,10 +61,8 @@ object CliOpts {
       help = "Arrival time at the start stop (HH:mm)",
     )
     .mapValidated { timeStr =>
-      Either
-        .catchNonFatal(LocalTime.parse(timeStr, DateTimeFormatter.ofPattern("HH:mm")))
-        .left
-        .map(ex => s"Incorrect time format. Expected \"HH:mm\". ${ex.getMessage}")
+      Time
+        .parse(timeStr)
         .toValidatedNel
     }
 
@@ -99,19 +98,19 @@ object CliOpts {
   object ProgramConfig:
 
     case class SingleEndStopConfig(
-                                    startStop: String,
-                                    endStop: String,
-                                    optimization: Optimization,
-                                    startTime: LocalTime,
-                                    algorithm: SingleEndStopPathFindingAlgorithm,
+      startStop: String,
+      endStop: String,
+      optimization: Optimization,
+      startTime: Time,
+      algorithm: SingleEndStopPathFindingAlgorithm,
     ) extends ProgramConfig
 
     case class MultipleStopsConfig(
-                                    startStop: String,
-                                    stopsToVisit: List[String],
-                                    optimization: Optimization,
-                                    startTime: LocalTime,
-                                    algorithm: MultipleStopsPathFindingAlgorithm,
+      startStop: String,
+      stopsToVisit: List[String],
+      optimization: Optimization,
+      startTime: Time,
+      algorithm: MultipleStopsPathFindingAlgorithm,
     ) extends ProgramConfig
 
   private val singleEndStopOpts: Opts[SingleEndStopConfig] =

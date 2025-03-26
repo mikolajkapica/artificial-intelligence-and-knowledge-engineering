@@ -53,7 +53,7 @@ class TabuSearchKnoxTest extends FunSuite {
       }
       .getOrElse(Double.MaxValue)
 
-  test("valid cycle route with more data") {
+  test("valid cycle route") {
     val resultOpt = TabuSearchKnox.run(stopA, through, testGraph, costFunction)
     assert(resultOpt.isDefined)
     val result = resultOpt.get
@@ -65,7 +65,7 @@ class TabuSearchKnoxTest extends FunSuite {
     through.foreach(stop => assert(routeStops.contains(stop)))
   }
 
-  test("correct total cost with more data") {
+  test("correct total cost with") {
     val resultOpt = TabuSearchKnox.run(stopA, through, testGraph, costFunction)
     assert(resultOpt.isDefined)
     val result = resultOpt.get

@@ -1,9 +1,7 @@
 package algorithms
 
 import cats.implicits.*
-import domain.Connection
-import domain.Graph
-import domain.Stop
+import domain.{Connection, Graph, Stop, Time}
 
 import scala.collection.mutable
 import scala.util.Random
@@ -12,6 +10,12 @@ object TabuSearchKnox {
 
   private val StepLimit: Int = 100
   private val OpLimit: Int = 50
+
+  // Parametry aspiracyjne:
+  // ε musi być z przedziału (0, 1)
+  private val Epsilon: Double = 0.1
+  // Liczba kroków, które będziemy pamiętać w historii H
+  private val HistoryLimit: Int = 10
 
   private def routeCost(
     route: List[Stop],
@@ -52,22 +56,28 @@ object TabuSearchKnox {
 
   def run(
     start: Stop,
+    startTime: Time,
     through: List[Stop],
     graph: Graph,
-    cost: (Stop, Stop) => Double,
+    cost: CostFunction,
   ): Option[PathFindingResult] = {
     // Krok 1: k ← 0
     var k = 0
 
-    // Krok 2: Losuj rozwiązanie początkowe s
+    // Krok 2: Losujemy rozwiązanie początkowe s
     val initialRoute = start :: Random.shuffle(through) ::: List(start)
     var s: List[Stop] = initialRoute
 
-    // Krok 3: s* <- s (globalne optimum)
+    // Krok 3: s* <- s
     var sBest: List[Stop] = s
 
-    // Krok 4: T <- ∅ (tabu lista)
+    // Krok 4: T ← ∅ (tabu lista)
     val T = mutable.Set.empty[List[Stop]]
+
+    // Dodatkowo: historia modyfikacji (H) oraz kolejka, która utrzymuje historię
+    // ostatnich HistoryLimit kroków.
+    val H = mutable.Map.empty[List[Stop], Int].withDefaultValue(0)
+    val historyQueue = mutable.Queue.empty[List[Stop]]
 
     // Krok 5: while k < STEP_LIMIT do
     while (k < StepLimit) {
@@ -78,43 +88,65 @@ object TabuSearchKnox {
       // Krok 7: while i < OP_LIMIT do
       while (i < OpLimit) {
 
-        // Krok 8: określ N(s) – generujemy sąsiedztwo bieżącego rozwiązania
+        // Generujemy sąsiedztwo bieżącego rozwiązania
         val neighbors = generateNeighbors(s)
 
-        // Wyznacz aspiracyjne rozwiązania A: te, które są tabu, ale mają lepszy
-        // koszt niż globalne optimum.
-        val candidateSet = {
-          val nonTabuCandidates = neighbors.filter(n => !T.contains(n))
-          val aspiratedCandidates = neighbors.filter(n => T.contains(n) && routeCost(n, cost) < routeCost(sBest, cost))
-          val combined = nonTabuCandidates ++ aspiratedCandidates
-          if (combined.nonEmpty) combined else neighbors
+        // W pierwszej kolejności sprawdzamy aspiracyjne kryterium:
+        // dla kandydata s_i obliczamy A_i = f(s_i) + ε*(k − H(s_i)).
+        // Jeśli f(s) > A_i, rozwiązanie s_i jest atrakcyjne, niezależnie od tego,
+        // czy należy do listy tabu.
+        val aspirCandidates = neighbors.filter { candidate =>
+          routeCost(s, cost) > routeCost(candidate, cost) +
+            Epsilon * (k - H(candidate))
         }
 
-        // Krok 9: wybierz najlepszy s' ∈ (N(s) \ T) ∪ A
-        val sPrime = candidateSet.minBy(n => routeCost(n, cost))
+        // Wybieramy kandydata:
+        val sCandidate =
+          if (aspirCandidates.nonEmpty) {
+            // Wśród aspiracyjnych kandydujemy wybieramy ten, który minimalizuje
+            // wartość f(s_i) + ε*(k − H(s_i))
+            aspirCandidates.minBy { candidate =>
+              routeCost(candidate, cost) + Epsilon * (k - H(candidate))
+            }
+          } else {
+            // Brak kandydatów spełniających aspiracyjne kryterium:
+            // wybieramy najlepszy spośród niedozwolonych (non-taboo) lub wszelkich sąsiadów.
+            val nonTabu = neighbors.filterNot(T.contains)
+            val candidateSet = if (nonTabu.nonEmpty) nonTabu else neighbors
+            candidateSet.minBy(candidate => routeCost(candidate, cost))
+          }
 
-        // Krok 10: zaktualizuj T – dodaj bieżące rozwiązanie do tabu listy
+        // Dodajemy bieżące rozwiązanie do tablicy tabu
         T.add(s)
 
-        // Krok 11-12: if D(s') < D(s) then aktualizuj lokalne optimum s ← s'
-        if (routeCost(sPrime, cost) < routeCost(s, cost)) {
-          s = sPrime
+        // Jeżeli kandydat poprawia lokalny koszt, akceptujemy posunięcie.
+        if (routeCost(sCandidate, cost) < routeCost(s, cost)) {
+          s = sCandidate
+
+          // Aktualizujemy historię – zwiększamy licznik modyfikacji dla s
+          historyQueue.enqueue(s)
+          H(s) = H(s) + 1
+
+          // Utrzymujemy okno historyczne o długości HistoryLimit:
+          if (historyQueue.size > HistoryLimit) {
+            val old = historyQueue.dequeue()
+            H(old) = H(old) - 1
+          }
         }
 
-        // Krok 13: i ← i + 1
         i += 1
       }
+
       // Krok 14: k ← k + 1
       k += 1
 
-      // Krok 15: if D(s) < D(s*) then s* ← s
+      // Aktualizacja globalnego optimum
       if (routeCost(s, cost) < routeCost(sBest, cost)) {
         sBest = s
       }
     }
 
-    // Po zakończeniu algorytmu – przekształcamy trasę (listę przystanków)
-    // na listę połączeń
+    // Przekształcamy trasę sBest (listę przystanków) na listę połączeń.
     buildConnectionsList(sBest, graph).map { connections =>
       PathFindingResult(connections, routeCost(sBest, cost))
     }

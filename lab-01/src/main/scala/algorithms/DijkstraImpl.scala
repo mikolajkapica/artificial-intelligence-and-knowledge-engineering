@@ -4,6 +4,7 @@ import cats.implicits.catsSyntaxEq
 import domain.Connection
 import domain.Graph
 import domain.Stop
+import domain.Time
 
 import scala.collection.mutable
 
@@ -11,15 +12,16 @@ object DijkstraImpl {
 
   def run(
     start: Stop,
+    startTime: Time,
     end: Stop,
     graph: Graph,
-    cost: (Stop, Stop) => Double,
+//    cost: CostFunction,
   ): Option[PathFindingResult] = {
     val vertices = graph.keys.toSet
 
-    val p = mutable.Map.empty[Stop, Stop]
-    val d = vertices.map(node => (node, if (node === start) 0 else Double.PositiveInfinity)).to(collection.mutable.Map)
-    val Q = vertices.to(collection.mutable.Set)
+    val p = mutable.Map.empty[Stop, Connection] // parent
+    val d = vertices.map(node => (node, if (node === start) 0 else Double.PositiveInfinity)).to(collection.mutable.Map) // distance
+    val Q = vertices.to(collection.mutable.Set) // unvisited vertices
 
     // scalafix:off DisableSyntax.while
     while (Q.nonEmpty) {
@@ -27,26 +29,34 @@ object DijkstraImpl {
       Q.remove(u)
 
       if (u === end) {
+
         return Some(
           PathFindingResult(
             path = reconstructPath(p.toMap, end, graph),
             cost = d(end),
           )
         )
+
       }
 
       for {
-        v <- graph(u).map(_.endStop) if d(v) > d(u) + cost(u, v)
+        uConnection <-
+          graph(u).groupBy(_.endStop).values.flatMap(_.minByOption(connectionCost => d(u) + cost(startTime, p.get(u), connectionCost)))
+        v = uConnection.endStop
+        connectionCost = cost(startTime, p.get(u), uConnection)
+        if d(v) > d(u) + connectionCost
       } {
-        d(v) = d(u) + cost(u, v)
-        p(v) = u
+        d(v) = d(u) + connectionCost
+        p(v) = uConnection
       }
+
     }
+
     None
   }
 
   private def reconstructPath(
-    predecessors: Map[Stop, Stop],
+    predecessors: Map[Stop, Connection],
     end: Stop,
     graph: Graph,
   ): List[Connection] = {
@@ -55,14 +65,19 @@ object DijkstraImpl {
 
     while (predecessors.contains(current)) {
       val parent = predecessors(current)
-      graph(parent).find(_.endStop === current) match {
-        case Some(connection) => path.prepend(connection)
-        case None             => throw new IllegalStateException(s"No connection found between $parent and $current")
-      }
-      current = parent
+      current = parent.startStop
+      path.prepend(parent)
     }
 
     path.toList
+  }
+
+  def cost(startTime: Time, fromOpt: Option[Connection], through: Connection): Double = {
+    val travelTime = through.departureTime.to(through.arrivalTime)
+    fromOpt.fold(startTime.to(through.departureTime) + travelTime) { from =>
+      val waitingTime = from.arrivalTime.to(through.departureTime)
+      travelTime + waitingTime
+    }
   }
 
 }

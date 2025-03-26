@@ -2,14 +2,13 @@ package cli
 
 import algorithms.Optimization
 import cats.implicits.catsSyntaxEq
-import domain.Connection
-import domain.Stop
+import domain.{Connection, Stop, Time}
 
 import java.time.LocalTime
 
 object Messages {
 
-  def startMsg(startStop: String, destination: String | List[String], optimization: Optimization, startTime: LocalTime): String = {
+  def startMsg(startStop: String, destination: String | List[String], optimization: Optimization, startTime: Time): String = {
     val optimizationShow = optimization match {
       case Optimization.Time      => "czas"
       case Optimization.Transfers => "liczba przesiadek"
@@ -35,6 +34,7 @@ object Messages {
               head.copy(arrivalTime = sample.arrivalTime, endStop = sample.endStop) :: tail
             else sample :: connections
         }
+        .reverse
         .map(vertex => s"${vertex.line}: ${vertex.departureTime} ${vertex.startStop} -> ${vertex.arrivalTime} ${vertex.endStop}")
         .mkString("\n")}
        |""".stripMargin

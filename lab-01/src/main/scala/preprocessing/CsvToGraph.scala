@@ -40,12 +40,13 @@ object CsvToGraph:
         )
     }
 
+  // this somehow overrides instead of adding new stops with connecitons
   private def createGraph[F[_]]: Pipe[F, Connection, Graph] = stream =>
     stream
       .fold(Map.empty[Stop, Set[Connection]]) { case (graph, busConnectionSample) =>
         graph
           .updatedWith(busConnectionSample.startStop)(valueOpt => (valueOpt.getOrElse(Set.empty) + busConnectionSample).some)
-          .updatedWith(busConnectionSample.endStop)(_.getOrElse(Set.empty).some)
+          .updatedWith(busConnectionSample.endStop)(valueOpt => valueOpt.getOrElse(Set.empty).some)
       }
 
   private def cacheObjects(path: Path): Pipe[IO, Graph, Graph] = stream =>
