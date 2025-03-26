@@ -45,17 +45,6 @@ object TabuSearchKnox {
         }.reverse
     }
 
-    def getBestConnection(graph: Graph, from: Connection, to: Stop): Connection =
-      graph
-        .get(from.endStop)
-        .toList
-        .flatMap(x => x.groupBy(_.endStop))
-        .find(x => x._1 == to)
-        .toList
-        .flatMap(_._2)
-        .minByOption(connection => costFunction(startTime, from.some, connection))
-        .get
-
     def routeCost(
       route: List[Connection]
     ): Double = {
@@ -64,23 +53,6 @@ object TabuSearchKnox {
         case (acc, List(a, b)) => acc + costFunction(startTime, a.some, b)
         case (acc, _)          => acc
       }
-    }
-
-    def stopsToConnections(stops: List[Stop]): List[Connection] = {
-      val first = stops.head
-      val second = stops.tail.head
-      val firstConnection = graph(first).filter(_.endStop == second).minBy(stop => costFunction(startTime, None, stop))
-
-      stops
-        .sliding(2)
-        .drop(1)
-        .foldLeft(List(firstConnection)) {
-          case (acc, List(_, b)) =>
-            val nextConnection = getBestConnection(graph, acc.head, b)
-            nextConnection :: acc
-          case (acc, _)          => acc
-        }
-        .reverse
     }
 
     def generateNeighbors(
