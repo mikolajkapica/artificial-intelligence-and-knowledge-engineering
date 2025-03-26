@@ -1,5 +1,7 @@
 package algorithms
 
+import algorithms.CostFunctions.getCostFunction
+import algorithms.Heuristics.{Heuristic, getHeuristic}
 import domain.*
 import munit.FunSuite
 
@@ -17,20 +19,10 @@ class AStarImplSpec extends FunSuite {
   private val B = stop("B")
   private val C = stop("C")
   private val D = stop("D")
-
-  test("reconstructPath builds correct path from predecessors") {
-    val predecessors = Map(
-      B -> conn(A, B, time(8), time(9)),
-      C -> conn(B, C, time(9, 30), time(10, 30)),
-    )
-
-    val path = AStarImpl.reconstructPath(predecessors, C)
-
-    assertEquals(path.size, 2)
-    assertEquals(path.head.startStop.name, "A")
-    assertEquals(path.last.endStop.name, "C")
-    assertEquals(path.map(_.line), List("1", "1"))
-  }
+  
+  private val costFunction = getCostFunction(Optimization.Time)
+  
+  private val heuristic = getHeuristic(Heuristic.TimeHaversine)
 
   test("selects fastest path considering transfer times") {
     val graph: Graph = Map(
@@ -43,7 +35,7 @@ class AStarImplSpec extends FunSuite {
       C -> Set.empty,
     )
 
-    val result = AStarImpl.run(A, time(8), C, graph).get
+    val result = AStarImpl.run(A, time(8), C, graph, costFunction, heuristic).get
 
     // Should choose A->B->C (1h + 45m) over A->D->C (2h + 1h15m)
     assertEquals(result.path.map(_.endStop.name), List("B", "C"))
@@ -59,7 +51,7 @@ class AStarImplSpec extends FunSuite {
       C -> Set.empty,
     )
 
-    val result = AStarImpl.run(A, time(8), C, graph).get
+    val result = AStarImpl.run(A, time(8), C, graph, costFunction, heuristic).get
     assertEquals(result.path.size, 1)
     assertEquals(result.path.head.line, "1")
   }

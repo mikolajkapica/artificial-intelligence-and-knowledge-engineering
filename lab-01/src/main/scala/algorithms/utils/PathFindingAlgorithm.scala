@@ -1,13 +1,16 @@
-package algorithms
+package algorithms.utils
 
-import algorithms.SingleEndStopPathFindingAlgorithm.*
-import algorithms.MultipleStopsPathFindingAlgorithm.*
+import algorithms.*
+import algorithms.utils.CostFunctions.CostFunction
+import algorithms.utils.MultipleStopsPathFindingAlgorithm.*
+import algorithms.utils.SingleEndStopPathFindingAlgorithm.*
 import domain.Connection
 import domain.Graph
 import domain.Stop
 import domain.Time
 
 import scala.collection.mutable
+import scala.concurrent.duration.DurationInt
 
 sealed trait PathFindingAlgorithm
 
@@ -15,6 +18,7 @@ sealed trait SingleEndStopPathFindingAlgorithm extends PathFindingAlgorithm
 
 object SingleEndStopPathFindingAlgorithm:
   case object AStar extends SingleEndStopPathFindingAlgorithm
+  case object AStarOptimized extends SingleEndStopPathFindingAlgorithm
   case object Dijkstra extends SingleEndStopPathFindingAlgorithm
 
 def findShortestPath(
@@ -24,9 +28,11 @@ def findShortestPath(
   startTime: Time,
   end: Stop,
   costFunction: CostFunction,
+  heuristic: (Stop, Stop) => Double,
 ): Option[PathFindingResult] = algorithm match
-  case AStar    => AStarImpl.run(start, startTime, end, graph, costFunction)
-  case Dijkstra => DijkstraImpl.run(start, startTime, end, graph, costFunction)
+  case AStar          => AStarImpl.run(start, startTime, end, graph, costFunction, heuristic)
+  case AStarOptimized => AStarOptimizedImpl.run(start, startTime, end, graph, costFunction, heuristic)
+  case Dijkstra       => DijkstraImpl.run(start, startTime, end, graph, costFunction)
 
 sealed trait MultipleStopsPathFindingAlgorithm extends PathFindingAlgorithm
 
@@ -40,27 +46,11 @@ def findShortestPath(
   startTime: Time,
   through: List[Stop],
   cost: CostFunction,
+  heuristic: (Stop, Stop) => Double,
 ): Option[PathFindingResult] = algorithm match
-  case TabuSearch => TabuSearchKnox.run(start, startTime, through, graph, cost)
+  case TabuSearch => TabuSearchImpl.run(start, startTime, through, graph, cost, heuristic)
 
 case class PathFindingResult(
   path: List[Connection],
   cost: Double,
 )
-
-def reconstructPath(
-  predecessors: Map[Stop, Connection],
-  end: Stop,
-): List[Connection] = {
-  val path = mutable.ListBuffer.empty[Connection]
-  var current = end
-
-  while (predecessors.contains(current)) {
-    val parent = predecessors(current)
-    current = parent.startStop
-    path.prepend(parent)
-  }
-
-  path.toList
-}
-

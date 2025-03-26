@@ -1,5 +1,7 @@
 package algorithms
 
+import algorithms.utils.CostFunctions.CostFunction
+import algorithms.utils.{PathFindingResult, reconstructPath}
 import cats.implicits.catsSyntaxEq
 import domain.Connection
 import domain.Graph

@@ -1,11 +1,13 @@
 package algorithms
 
+import algorithms.CostFunctions.getCostFunction
+import algorithms.Heuristics.{Heuristic, getHeuristic}
 import domain.*
 import munit.FunSuite
 
 import scala.util.Random
 
-class TabuSearchKnoxSpec extends FunSuite {
+class TabuSearchImplSpec extends FunSuite {
   // Set fixed seed for reproducible tests
   Random.setSeed(12345)
 
@@ -53,24 +55,18 @@ class TabuSearchKnoxSpec extends FunSuite {
     ),
   )
 
-  // Simple cost function (travel time in minutes)
-  val timeCost: (Stop, Stop) => Double = (a, b) =>
-    testGraph(a)
-      .find(_.endStop == b)
-      .map { conn =>
-        (conn.arrivalTime.hour * 60 + conn.arrivalTime.minute) -
-          (conn.departureTime.hour * 60 + conn.departureTime.minute)
-      }
-      .map(_.toDouble)
-      .getOrElse(Double.PositiveInfinity)
+  private val costFunction = getCostFunction(Optimization.Time)
+
+  private val heuristic = getHeuristic(Heuristic.TimeHaversine)
 
   test("finds valid round-trip route through required stops") {
-    val result = TabuSearchKnox.run(
+    val result = TabuSearchImpl.run(
       start = A,
       startTime = time(8),
       through = List(B, C, D), // Must visit B, C and D
       graph = testGraph,
-      cost = timeCost,
+      costFunction = costFunction,
+      heuristic = heuristic,
     )
 
     assert(result.isDefined, "Should find a valid route")
@@ -97,24 +93,26 @@ class TabuSearchKnoxSpec extends FunSuite {
     // Known optimal path: A -> B -> C -> D -> A (total time = 240 minutes)
     val expectedCost = 240.0
 
-    val result = TabuSearchKnox.run(
+    val result = TabuSearchImpl.run(
       start = A,
       startTime = time(8),
       through = List(B, C, D),
       graph = testGraph,
-      cost = timeCost,
+      costFunction = costFunction,
+      heuristic = heuristic,
     )
 
     assert(result.isDefined)
   }
 
   test("handles case with multiple possible cycles") {
-    val result = TabuSearchKnox.run(
+    val result = TabuSearchImpl.run(
       start = A,
       startTime = time(8),
       through = List(B, E), // Can go A->B->A->E->A or A->B->E->A etc.
       graph = testGraph,
-      cost = timeCost,
+      costFunction = costFunction,
+      heuristic = heuristic,
     )
 
     assert(result.isDefined)

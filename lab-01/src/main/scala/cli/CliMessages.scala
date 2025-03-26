@@ -1,17 +1,18 @@
 package cli
 
-import algorithms.Optimization
+import algorithms.utils.Optimization
 import cats.implicits.catsSyntaxEq
 import domain.{Connection, Stop, Time}
 
 import java.time.LocalTime
 
-object Messages {
+object CliMessages {
 
   def startMsg(startStop: String, destination: String | List[String], optimization: Optimization, startTime: Time): String = {
     val optimizationShow = optimization match {
       case Optimization.Time      => "czas"
       case Optimization.Transfers => "liczba przesiadek"
+      case Optimization.Combined  => "czas i liczba przesiadek"
     }
 
     val destinationMsg = destination match {

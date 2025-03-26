@@ -1,19 +1,12 @@
 package cli
 
-import algorithms.MultipleStopsPathFindingAlgorithm.TabuSearch
-import algorithms.MultipleStopsPathFindingAlgorithm
-import algorithms.Optimization
-import algorithms.SingleEndStopPathFindingAlgorithm
-import algorithms.SingleEndStopPathFindingAlgorithm.AStar
-import algorithms.SingleEndStopPathFindingAlgorithm.Dijkstra
+import algorithms.utils.MultipleStopsPathFindingAlgorithm.TabuSearch
+import algorithms.utils.{MultipleStopsPathFindingAlgorithm, Optimization, SingleEndStopPathFindingAlgorithm}
+import algorithms.utils.SingleEndStopPathFindingAlgorithm.{AStar, AStarOptimized, Dijkstra}
 import cats.syntax.all.*
-import cli.CliOpts.ProgramConfig.MultipleStopsConfig
-import cli.CliOpts.ProgramConfig.SingleEndStopConfig
+import cli.CliOpts.ProgramConfig.{MultipleStopsConfig, SingleEndStopConfig}
 import com.monovore.decline.Opts
 import domain.Time
-
-import java.time.LocalTime
-import java.time.format.DateTimeFormatter
 
 object CliOpts {
 
@@ -50,6 +43,7 @@ object CliOpts {
     .mapValidated {
       case 't' => Optimization.Time.validNel
       case 'p' => Optimization.Transfers.validNel
+      case 'c' => Optimization.Combined.validNel
       case str => s"Unknown optimization criteria: $str".invalidNel
     }
 
@@ -75,9 +69,10 @@ object CliOpts {
     )
     .withDefault("a")
     .mapValidated {
-      case "a" => AStar.validNel
-      case "d" => Dijkstra.validNel
-      case str => s"Unknown algorithm: $str".invalidNel
+      case "a"  => AStar.validNel
+      case "ao" => AStarOptimized.validNel
+      case "d"  => Dijkstra.validNel
+      case str  => s"Unknown algorithm: $str".invalidNel
     }
 
   private val multipleStopsPathfindingAlgorithmOpt: Opts[MultipleStopsPathFindingAlgorithm] = Opts

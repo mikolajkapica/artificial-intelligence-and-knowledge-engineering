@@ -4,19 +4,18 @@ import cats.syntax.either.*
 import fs2.data.csv.*
 import fs2.data.csv.generic.semiauto.*
 
+import scala.annotation.targetName
+import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.DurationInt
+
 case class Time(hour: Int, minute: Int, second: Int) extends Product, Serializable {
   def toSeconds: Int = hour * 3600 + minute * 60 + second
 
   def toMinutes: Int = hour * 60 + minute
 
-  def +(mins: Int): Time = {
-    val total = toMinutes + mins
-    Time(hour = total / 60 % 24, minute = total % 60, second = 0)
-  }
-
-  def to(that: Time): Int =
-    if (this.toSeconds > that.toSeconds) 24 * 3600 - this.toSeconds + that.toSeconds
-    else that.toSeconds - this.toSeconds
+  def to(that: Time): FiniteDuration =
+    if (this.toSeconds > that.toSeconds) (24 * 3600 - this.toSeconds + that.toSeconds).seconds
+    else (that.toSeconds - this.toSeconds).seconds
 
   override def toString: String = f"$hour%02d:$minute%02d:$second%02d"
 }

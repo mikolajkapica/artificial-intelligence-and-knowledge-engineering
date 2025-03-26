@@ -1,5 +1,7 @@
 package algorithms
 
+import algorithms.utils.CostFunctions.CostFunction
+import algorithms.utils.PathFindingResult
 import cats.implicits.*
 import domain.Connection
 import domain.Graph
@@ -9,7 +11,7 @@ import domain.Time
 import scala.collection.mutable
 import scala.util.Random
 
-object TabuSearchKnox {
+object TabuSearchImpl {
 
   Random.setSeed(42)
 
@@ -29,6 +31,7 @@ object TabuSearchKnox {
     through: List[Stop],
     graph: Graph,
     costFunction: CostFunction,
+    heuristic: (Stop, Stop) => Double,
   ): Option[PathFindingResult] = {
 
     def getFullRouteThroughStops(start: Stop, startTime: Time, through: List[Stop]) = {
@@ -37,12 +40,13 @@ object TabuSearchKnox {
         .sliding(2)
         .foldLeft(List.empty[Connection]) {
           case (acc, List(a, b)) =>
-            AStarImpl.run(a, acc.headOption.map(_.arrivalTime).getOrElse(startTime), b, graph, costFunction) match {
+            AStarImpl.run(a, acc.headOption.map(_.arrivalTime).getOrElse(startTime), b, graph, costFunction, heuristic) match {
               case Some(result) => result.path.reverse ::: acc
               case None         => acc
             }
           case (acc, _)          => acc
-        }.reverse
+        }
+        .reverse
     }
 
     def routeCost(

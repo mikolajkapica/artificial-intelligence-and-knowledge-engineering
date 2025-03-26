@@ -1,15 +1,13 @@
 package algorithms
 
-import scala.collection.mutable
-import cats.Eq
-import cats.syntax.eq.*
-import cats.syntax.option.*
+import algorithms.utils.CostFunctions.CostFunction
+import algorithms.utils.{PathFindingResult, reconstructPath}
 import domain.Connection
 import domain.Graph
 import domain.Stop
 import domain.Time
 
-import scala.annotation.tailrec
+import scala.collection.mutable
 
 object AStarImpl {
 
@@ -19,15 +17,15 @@ object AStarImpl {
     end: Stop,
     graph: Graph,
     costFunction: CostFunction,
+    heuristic: (Stop, Stop) => Double
   ): Option[PathFindingResult] = {
-    val heuristic = lengthHeuristic
 
     // 1: poczatek.g ← 0
-    val gScore = mutable.Map(start -> 0.0)
+    val gScore = mutable.Map(start -> 0.0).withDefaultValue(Double.PositiveInfinity)
     // 2: poczatek.h ← 0
-    val hScore = mutable.Map(start -> heuristic(start, end))
+    val hScore = mutable.Map(start -> heuristic(start, end)).withDefaultValue(Double.PositiveInfinity)
     // 3: poczatek.f ← poczatek.g + poczatek.h
-    val fScore = mutable.Map(start -> (gScore(start) + hScore(start)))
+    val fScore = mutable.Map(start -> (gScore(start) + hScore(start))).withDefaultValue(Double.PositiveInfinity)
     // 4: otwarte ← list([poczatek])
     val opened = mutable.Set(start)
     // 5: zamkniete ← list()
@@ -45,7 +43,7 @@ object AStarImpl {
       // 9: for wezel_testowy in otwarte do
       for (node <- opened)
         // 10: if f(wezel_testowy) < koszt_wezla then
-        if (fScore.getOrElse(node, Double.PositiveInfinity) < currentCost) {
+        if (fScore(node) < currentCost) {
           // 11: wezel ← wezel_testowy
           currentNode = node
           // 12: koszt_wezla ← f(wezel_testowy)
@@ -88,7 +86,7 @@ object AStarImpl {
 
         } else {
           // 24: if wezel_nastepny.g > wezel.g + g(wezel, wezel_nastepny) then
-          if (tentativeGScore < gScore.getOrElse(neighbor, Double.PositiveInfinity)) {
+          if (tentativeGScore < gScore(neighbor)) {
             // 25: wezel_nastepny.g = wezel.g + g(wezel, wezel_nastepny)
             gScore.update(neighbor, tentativeGScore)
             // 26: wezel_nastepny.f = wezel_nastepny.g + wezel_nastepny.h
