@@ -1,43 +1,44 @@
 package algorithms
 
-import cats.implicits.catsSyntaxEq
+import algorithms.SingleEndStopPathFindingAlgorithm.*
+import algorithms.MultipleStopsPathFindingAlgorithm.*
 import domain.Connection
 import domain.Graph
 import domain.Stop
 
-type CostFunction = Graph => (Stop, Stop) => Double
+sealed trait PathFindingAlgorithm
 
-def timeCost: CostFunction =
-  graph => (a, b) => graph(a).filter(_.endStop === b).map(_.arrivalTime.hour.toDouble).minOption.getOrElse(Double.MaxValue)
+sealed trait SingleEndStopPathFindingAlgorithm extends PathFindingAlgorithm
 
-def transfersCost: CostFunction =
-  graph => (a, b) => if a === b then 0 else 1
-
-enum Optimization:
-  case Time, Transfers
-
-def cost: Optimization => CostFunction = {
-  case Optimization.Time      => timeCost
-  case Optimization.Transfers => transfersCost
-}
-
-def lengthHeuristic(a: Stop, b: Stop): Double =
-  b.coordinates.latitude - a.coordinates.latitude + b.coordinates.longitude - a.coordinates.longitude
-
-enum PathFindingAlgorithm:
-  case AStar, Dijkstra
-
-case class PathFindingResult(
-  path: List[Connection],
-  cost: Double,
-)
+object SingleEndStopPathFindingAlgorithm:
+  case object AStar extends SingleEndStopPathFindingAlgorithm
+  case object Dijkstra extends SingleEndStopPathFindingAlgorithm
 
 def findShortestPath(
-  algorithm: PathFindingAlgorithm,
+  algorithm: SingleEndStopPathFindingAlgorithm,
   graph: Graph,
   start: Stop,
   end: Stop,
   cost: (Stop, Stop) => Double,
 ): Option[PathFindingResult] = algorithm match
-  case PathFindingAlgorithm.AStar    => AStarImplementation.run(start, end, graph, cost)
-  case PathFindingAlgorithm.Dijkstra => DijkstraImplementation.run(start, end, graph, cost)
+  case AStar    => AStarImpl.run(start, end, graph, cost)
+  case Dijkstra => DijkstraImpl.run(start, end, graph, cost)
+
+sealed trait MultipleStopsPathFindingAlgorithm extends PathFindingAlgorithm
+
+object MultipleStopsPathFindingAlgorithm:
+  case object TabuSearch extends MultipleStopsPathFindingAlgorithm
+
+def findShortestPath(
+  algorithm: MultipleStopsPathFindingAlgorithm,
+  graph: Graph,
+  start: Stop,
+  through: List[Stop],
+  cost: (Stop, Stop) => Double,
+): Option[PathFindingResult] = algorithm match
+  case TabuSearch => TabuSearchKnox.run(start, through, graph, cost)
+
+case class PathFindingResult(
+  path: List[Connection],
+  cost: Double,
+)

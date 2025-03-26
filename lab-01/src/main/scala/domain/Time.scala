@@ -1,7 +1,5 @@
 package domain
 
-import cats.implicits.*
-import cats.kernel.Eq
 import cats.syntax.either.*
 import fs2.data.csv.*
 import fs2.data.csv.generic.semiauto.*

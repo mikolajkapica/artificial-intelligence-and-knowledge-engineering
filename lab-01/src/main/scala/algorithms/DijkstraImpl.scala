@@ -7,7 +7,7 @@ import domain.Stop
 
 import scala.collection.mutable
 
-object DijkstraImplementation {
+object DijkstraImpl {
 
   def run(
     start: Stop,

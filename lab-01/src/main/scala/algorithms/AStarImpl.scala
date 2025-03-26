@@ -11,7 +11,7 @@ import domain.Time
 
 import scala.annotation.tailrec
 
-object AStarImplementation {
+object AStarImpl {
 
   private def reconstructPath(
     node: Stop,
