@@ -1,6 +1,8 @@
 package algorithms.utils
 
-import domain.{Connection, Stop, Time}
+import domain.Connection
+import domain.Stop
+import domain.Time
 import scala.concurrent.duration.DurationInt
 
 object CostFunctions {
@@ -18,11 +20,13 @@ object CostFunctions {
   }
 
   def transfersCost(startTime: Time, fromOpt: Option[Connection], through: Connection): Double =
-    fromOpt.fold(1)(from => if from.line == through.line && from.arrivalTime.to(through.departureTime) < 5.minutes then 0 else 1)
+    fromOpt.fold(1)(from => if from.line == through.line || from.arrivalTime.to(through.departureTime) < 5.minutes then 0 else 1)
 
   // a cost function that takes both time and transfers into account
-  def combinedCost(startTime: Time, fromOpt: Option[Connection], through: Connection): Double =
-    timeCost(startTime, fromOpt, through) + transfersCost(startTime, fromOpt, through) * 1000
+  def combinedCost(startTime: Time, fromOpt: Option[Connection], through: Connection): Double = {
+    val waitingTime = fromOpt.fold(startTime.to(through.departureTime))(from => from.arrivalTime.to(through.departureTime)).toSeconds
+    timeCost(startTime, fromOpt, through) + transfersCost(startTime, fromOpt, through) * waitingTime
+  }
 
   def getCostFunction: Optimization => CostFunction = {
     case Optimization.Time      => timeCost
