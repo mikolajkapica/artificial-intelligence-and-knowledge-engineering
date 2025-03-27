@@ -3,10 +3,7 @@ package algorithms
 import algorithms.utils.CostFunctions.CostFunction
 import algorithms.utils.PathFindingResult
 import cats.implicits.*
-import domain.Connection
-import domain.Graph
-import domain.Stop
-import domain.Time
+import domain.{Connection, Graph, Stop, Time}
 
 import scala.collection.mutable
 import scala.util.Random

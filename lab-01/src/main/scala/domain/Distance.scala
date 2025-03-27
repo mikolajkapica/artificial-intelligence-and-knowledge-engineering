@@ -24,4 +24,5 @@ object Distance {
 
     EARTH_RADIUS_METERS * c
   }
+
 }

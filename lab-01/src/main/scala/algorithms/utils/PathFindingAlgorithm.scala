@@ -9,9 +9,6 @@ import domain.Graph
 import domain.Stop
 import domain.Time
 
-import scala.collection.mutable
-import scala.concurrent.duration.DurationInt
-
 sealed trait PathFindingAlgorithm
 
 sealed trait SingleEndStopPathFindingAlgorithm extends PathFindingAlgorithm

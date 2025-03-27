@@ -4,9 +4,8 @@ import cats.syntax.either.*
 import fs2.data.csv.*
 import fs2.data.csv.generic.semiauto.*
 
-import scala.annotation.targetName
-import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.duration.DurationInt
+import scala.concurrent.duration.FiniteDuration
 
 case class Time(hour: Int, minute: Int, second: Int) extends Product, Serializable {
   def toSeconds: Int = hour * 3600 + minute * 60 + second

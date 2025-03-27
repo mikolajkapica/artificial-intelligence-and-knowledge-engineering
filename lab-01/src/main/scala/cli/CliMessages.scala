@@ -7,7 +7,8 @@ import domain.Time
 
 object CliMessages {
 
-  def startMsg(startStop: String, destination: String | List[String], optimization: Optimization, startTime: Time): String = {
+  def startMsg(startStop: String, destination: String | List[String], optimization: Optimization, startTime: Time)
+    : String = {
     val optimizationShow = optimization match {
       case Optimization.Time      => "czas"
       case Optimization.Transfers => "liczba przesiadek"
@@ -42,7 +43,7 @@ object CliMessages {
         .mkString("\n")}
        |""".stripMargin
 
-  def resultDataMessage(cost: Double, duration: Long) =
+  def resultDataMessage(cost: Double, duration: Long): String =
     s"""Koszt: $cost
        |Czas obliczeń: $duration milisekund""".stripMargin
 

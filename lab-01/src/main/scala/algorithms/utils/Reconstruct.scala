@@ -1,13 +1,14 @@
 package algorithms.utils
 
-import domain.{Connection, Stop}
+import domain.Connection
+import domain.Stop
 
 import scala.collection.mutable
 
 def reconstructPath(
-                     predecessors: Map[Stop, Connection],
-                     end: Stop,
-                   ): List[Connection] = {
+  predecessors: Map[Stop, Connection],
+  end: Stop,
+): List[Connection] = {
   val path = mutable.ListBuffer.empty[Connection]
   var current = end
 

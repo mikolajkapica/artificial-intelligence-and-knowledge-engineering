@@ -1,11 +1,11 @@
 package domain
 
 import cats.Eq
-import cats.syntax.all.*
 import cats.effect.IO
 import cats.implicits.catsSyntaxEq
+import cats.syntax.all.*
 
-import scala.math._
+import scala.math.*
 
 case class Stop(name: String, coordinates: WGS84) {
 
@@ -44,7 +44,7 @@ object Stop:
     IO.fromEither(parse(stop, graph).leftMap(new Exception(_)))
 
 case class WGS84(latitude: Double, longitude: Double) {
-
+  
   def distanceTo(to: WGS84): Double = Distance.haversineDistance(this, to)
 
 }

@@ -1,7 +1,8 @@
 package algorithms
 
 import algorithms.utils.CostFunctions.CostFunction
-import algorithms.utils.{PathFindingResult, reconstructPath}
+import algorithms.utils.PathFindingResult
+import algorithms.utils.reconstructPath
 import domain.Connection
 import domain.Graph
 import domain.Stop
@@ -17,42 +18,28 @@ object AStarImpl {
     end: Stop,
     graph: Graph,
     costFunction: CostFunction,
-    heuristic: (Stop, Stop) => Double
+    heuristic: (Stop, Stop) => Double,
   ): Option[PathFindingResult] = {
 
-    // 1: poczatek.g ← 0
     val gScore = mutable.Map(start -> 0.0).withDefaultValue(Double.PositiveInfinity)
-    // 2: poczatek.h ← 0
     val hScore = mutable.Map(start -> heuristic(start, end)).withDefaultValue(Double.PositiveInfinity)
-    // 3: poczatek.f ← poczatek.g + poczatek.h
     val fScore = mutable.Map(start -> (gScore(start) + hScore(start))).withDefaultValue(Double.PositiveInfinity)
-    // 4: otwarte ← list([poczatek])
     val opened = mutable.Set(start)
-    // 5: zamkniete ← list()
     val closed = mutable.Set.empty[Stop]
 
     val predecessors = mutable.Map.empty[Stop, Connection]
 
-    // 6: while len(otwarte) > 0 do
     while (opened.nonEmpty) {
-      // 7: wezel ← null
       var currentNode: Stop = null
-      // 8: koszt_wezla ← +Inf
       var currentCost = Double.PositiveInfinity
 
-      // 9: for wezel_testowy in otwarte do
       for (node <- opened)
-        // 10: if f(wezel_testowy) < koszt_wezla then
         if (fScore(node) < currentCost) {
-          // 11: wezel ← wezel_testowy
           currentNode = node
-          // 12: koszt_wezla ← f(wezel_testowy)
           currentCost = fScore(node)
         }
 
-      // 13: if wezel == koniec then
       if (currentNode == end) {
-        // 14: Rozwiązanie znalezione
         return Some(
           PathFindingResult(
             path = reconstructPath(predecessors.toMap, end),
@@ -61,44 +48,30 @@ object AStarImpl {
         )
       }
 
-      // 15: otwarte ← (otwarte − wezel)
       opened.remove(currentNode)
-      // 16: zamkniete ← (zamkniete + wezel)
       closed.add(currentNode)
 
-      // 17: for wezel_nastepny in sasiedztwo(wezel) do
       for (connection <- graph(currentNode)) {
         val neighbor = connection.endStop
         val tentativeGScore = gScore(currentNode) + costFunction(startTime, predecessors.get(currentNode), connection)
 
-        // 18: if wezel_nastepny not in otwarte and wezel_nastepny not in zamkniete then
         if (!opened.contains(neighbor) && !closed.contains(neighbor)) {
-          // 19: otwarte ← (otwarte + wezel_nastepny)
           opened.add(neighbor)
-          // 20: wezel_nastepny.h = h(wezel_nastepny, koniec)
           hScore.update(neighbor, heuristic(neighbor, end))
-          // 21: wezel_nastepny.g = wezel.g + g(wezel, wezel_nastepny)
           gScore.update(neighbor, tentativeGScore)
-          // 22: wezel_nastepny.f = wezel_nastepny.g + wezel_nastepny.h
           fScore.update(neighbor, gScore(neighbor) + hScore(neighbor))
 
           predecessors.update(neighbor, connection)
 
         } else {
-          // 24: if wezel_nastepny.g > wezel.g + g(wezel, wezel_nastepny) then
           if (tentativeGScore < gScore(neighbor)) {
-            // 25: wezel_nastepny.g = wezel.g + g(wezel, wezel_nastepny)
             gScore.update(neighbor, tentativeGScore)
-            // 26: wezel_nastepny.f = wezel_nastepny.g + wezel_nastepny.h
             fScore.update(neighbor, gScore(neighbor) + hScore(neighbor))
 
             predecessors.update(neighbor, connection)
 
-            // 27: if wezel_nastepny in zamkniete then
             if (closed.contains(neighbor)) {
-              // 28: otwarte ← (otwarte + wezel_nastepny)
               opened.add(neighbor)
-              // 29: zamkniete ← (zamkniete − wezel_nastepny)
               closed.remove(neighbor)
             }
           }
