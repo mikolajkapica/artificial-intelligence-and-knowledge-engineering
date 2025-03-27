@@ -11,7 +11,7 @@ import domain.Time
 import scala.collection.mutable
 import scala.util.Random
 
-// Code includes (b) dynamic tabu list and now correctly integrates (c) aspiration
+// Code includes (b), (c), and now addresses sampling strategy aspect of (d)
 object TabuSearchImpl {
 
   private val StepLimit: Int = 10 // Your reduced limit
@@ -28,6 +28,16 @@ object TabuSearchImpl {
   private val Epsilon: Double = 0.1
   private val HistoryLimit: Int = 10
 
+  // (d) Parameter for Neighborhood Sampling Strategy
+  // Increase the number of neighbors sampled compared to n.min(5).
+  // Example: Sample roughly 2*n neighbors, with a min of 10 and max of 50.
+  // Adjust min/max/factor based on performance and problem size.
+  private def calculateNumNeighborsToSample(throughListSize: Int): Int = {
+    val n = throughListSize
+    val calculatedSamples = Math.max(10, n * 2) // Min 10, or 2*n
+    Math.min(calculatedSamples, 50) // Cap at 50 to limit slowdown
+  }
+
   def run(
            start: Stop,
            startTime: Time,
@@ -38,7 +48,7 @@ object TabuSearchImpl {
          ): Option[PathFindingResult] = {
 
     // --- Helper functions (getFullRouteThroughStops, routeCost, generateNeighbors) ---
-    // --- No changes needed in helper functions ---
+    // --- No changes needed in helper functions themselves ---
     def getFullRouteThroughStops(
                                   start: Stop,
                                   startTime: Time,
@@ -77,10 +87,12 @@ object TabuSearchImpl {
       }
     }
 
+    // (d) generateNeighbors now uses the calculated sample size.
+    // The function itself still uses random swaps and full path recalculation.
     def generateNeighbors(
                            startStop: Stop,
                            currentThrough: List[Stop],
-                           numNeighbors: Int,
+                           numNeighbors: Int, // Parameterized number of neighbors
                          ): List[List[Connection]] = {
       def swapTwoElements[A](list: List[A]): List[A] =
         if (list.size < 2) list
@@ -91,13 +103,14 @@ object TabuSearchImpl {
           list.updated(i, list(j)).updated(j, list(i))
         }
 
+      // Generate the specified number of neighbors
       (0 until numNeighbors)
         .map { _ =>
           val swappedThrough = swapTwoElements(currentThrough)
           getFullRouteThroughStops(startStop, startTime, swappedThrough)
         }
         .toList
-        .filter(_.nonEmpty)
+        .filter(_.nonEmpty) // Filter out failed paths
     }
     // --- End of helper functions ---
 
@@ -105,89 +118,68 @@ object TabuSearchImpl {
     var k = 0
     val n = through.length
     val tabuTenure = calculateTabuTenure(n)
+    // (d) Calculate the number of neighbors to sample based on strategy
+    val numNeighborsToSample = calculateNumNeighborsToSample(n)
+    // println(s"Sampling $numNeighborsToSample neighbors per iteration.") // Debugging
 
     // Initial solution 's'
-    // WARNING: Still using List[Connection] as state, neighbor generation note applies
-    var currentThroughPermutation = through // Track permutation for neighbor generation
+    var currentThroughPermutation = through
     var s: List[Connection] =
       getFullRouteThroughStops(start, startTime, currentThroughPermutation)
-    if (s.isEmpty) return None // Handle initial failure
+    if (s.isEmpty) return None
 
     var sBest: List[Connection] = s
     var sBestCost: Double = routeCost(sBest)
 
-    // (b) Tabu list T (Queue with fixed tenure)
+    // Tabu list T and History H
     val T = mutable.Queue.empty[List[Connection]]
-
-    // (c) History H for aspiration
     val H = mutable.Map.empty[List[Connection], Int].withDefaultValue(0)
     val historyQueue = mutable.Queue.empty[List[Connection]]
 
     // --- Main Loop ---
     while (k < StepLimit) {
       var i = 0
-      // Inner loop (OpLimit) - still non-standard TS structure
       while (i < OpLimit) {
 
-        // Generate neighbors based on the *current permutation*
-        // Using currentThroughPermutation which *should* correspond to 's'
+        // (d) Generate neighbors using the calculated sample size
         val neighbors = generateNeighbors(
           start,
-          currentThroughPermutation, // Use the permutation corresponding to 's'
-          n.min(5) // Your reduced sample size
+          currentThroughPermutation, // Use permutation corresponding to 's'
+          numNeighborsToSample // Use the calculated sample size
         )
 
+        // --- Rest of the loop (evaluation, selection, move) remains the same ---
         if (neighbors.nonEmpty) {
           val currentCost = routeCost(s)
-
-          // Evaluate neighbors and categorize them
           val evaluatedNeighbors = neighbors.map(n => (n, routeCost(n)))
-
           val (tabuNeighbors, nonTabuNeighbors) =
             evaluatedNeighbors.partition { case (neighbor, _) =>
               T.contains(neighbor)
             }
 
-          // (c) Identify best aspirating candidate among tabu neighbors
           val bestAspiratingOpt = tabuNeighbors
             .filter { case (candidate, cost) =>
-              // Aspiration criterion check
               cost.isFinite && currentCost > cost + Epsilon * (k - H(candidate))
             }
             .minByOption { case (candidate, cost) =>
-              // Minimize aspiration metric
               cost + Epsilon * (k - H(candidate))
             }
 
-          // Find best non-tabu candidate
           val bestNonTabuOpt = nonTabuNeighbors
-            .filter { case (_, cost) => cost.isFinite } // Ensure valid cost
-            .minByOption(_._2) // Minimize cost
+            .filter { case (_, cost) => cost.isFinite }
+            .minByOption(_._2)
 
-          // --- Candidate Selection and Move Acceptance ---
-          // (c) Prioritize aspiration, then non-tabu. Accept the move if found.
           val selectedCandidateOpt: Option[(List[Connection], Double)] =
             bestAspiratingOpt.orElse(bestNonTabuOpt)
 
-          // Perform move if a candidate (aspirating or non-tabu) was selected
           selectedCandidateOpt match {
             case Some((selectedCandidate, selectedCost)) =>
-              // Update current solution 's'
               s = selectedCandidate
-              // Update the permutation tracking (needed for next neighbor generation)
-              // WARNING: This requires reverse engineering the permutation from the path,
-              // or ideally, changing the state representation.
-              // For now, we'll skip updating currentThroughPermutation, accepting
-              // the inaccuracy in neighbor generation noted before.
-              // currentThroughPermutation = ??? // How to get permutation from 's'?
+              // WARNING: currentThroughPermutation not updated, see previous notes.
 
-              // (b) Update Tabu List (T)
-              if (T.size >= tabuTenure) {
-                T.dequeue()
-              }
-              T.enqueue(s) // Add the new solution 's'
+              if (T.size >= tabuTenure) { T.dequeue() }
+              T.enqueue(s)
 
-              // (c) Update History (H)
               historyQueue.enqueue(s)
               H(s) = H(s) + 1
               if (historyQueue.size > HistoryLimit) {
@@ -195,29 +187,16 @@ object TabuSearchImpl {
                 H(old) = Math.max(0, H(old) - 1)
               }
 
-              // Update best solution *if* the current move improved it
               if (selectedCost < sBestCost) {
                 sBest = s
                 sBestCost = selectedCost
               }
-
-            case None => // No admissible move (neither aspirating nor non-tabu) found
-            // Stay in the current state 's'
+            case None => // No admissible move
           }
         } // End if neighbors.nonEmpty
-
         i += 1
       } // End inner loop (i)
-
       k += 1
-
-      // Update global best (redundant check, already done during move acceptance)
-      // val currentS_Cost = routeCost(s)
-      // if (currentS_Cost < sBestCost) {
-      //   sBest = s
-      //   sBestCost = currentS_Cost
-      // }
-
     } // End outer loop (k)
 
     // Return the best result found
