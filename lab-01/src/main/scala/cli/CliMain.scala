@@ -13,12 +13,14 @@ import ProgramConfig.*
 import algorithms.Heuristics.Heuristic
 import algorithms.Heuristics.getHeuristic
 import algorithms.utils.CostFunctions.getCostFunction
+import algorithms.utils.NoPathFoundException
 import algorithms.utils.PathFindingResult
 import algorithms.utils.findShortestPath
 import preprocessing.CsvToGraph.getCachedGraphOrReadAndCache
 
 import java.time.LocalTime
 import java.time.temporal.ChronoUnit
+import scala.util.Random
 
 object CliMain
   extends CommandIOApp(
@@ -26,12 +28,13 @@ object CliMain
     header = "Find shortest connections from bus stop A to B",
   ) {
 
+  // constants
   private val Data = "./data/connection_graph.csv"
   private val CacheDir = "./.cache"
   private val GraphFileName = "graph.bin"
   private val CachePath = Path(CacheDir) / GraphFileName
-
   private val heuristicType = Heuristic.EuclideanDegree
+  Random.setSeed(42)
 
   override def main: Opts[IO[ExitCode]] =
     mainOpts
@@ -43,7 +46,14 @@ object CliMain
             endStopParsed         <- Stop.parseIO(config.endStop, graph)
             costFunction = getCostFunction(config.optimization)
             heuristic = getHeuristic(heuristicType)
-            _                     <- IO.println(startMsg(config.startStop, config.endStop, config.optimization, config.startTime))
+            _                     <- IO.println {
+                                       startMsg(
+                                         config.startStop,
+                                         config.endStop,
+                                         config.optimization,
+                                         config.startTime,
+                                       )
+                                     }
             startTime = LocalTime.now()
             result                <- IO.fromOption(
                                        findShortestPath(
@@ -55,7 +65,7 @@ object CliMain
                                          costFunction,
                                          heuristic,
                                        )
-                                     )(new Exception("No path found"))
+                                     )(new NoPathFoundException)
             PathFindingResult(path, cost) = result
             endTime = LocalTime.now()
             _                     <- IO.println(pathMessage(path))
@@ -69,7 +79,14 @@ object CliMain
             endStopParsed         <- config.stopsToVisit.traverse(Stop.parseIO(_, graph))
             costFunction = getCostFunction(config.optimization)
             heuristic = getHeuristic(heuristicType)
-            _                     <- IO.println(startMsg(config.startStop, config.stopsToVisit, config.optimization, config.startTime))
+            _                     <- IO.println {
+                                       startMsg(
+                                         config.startStop,
+                                         config.stopsToVisit,
+                                         config.optimization,
+                                         config.startTime,
+                                       )
+                                     }
             startTime = LocalTime.now()
             result                <- IO.fromOption {
                                        findShortestPath(
@@ -81,7 +98,7 @@ object CliMain
                                          costFunction,
                                          heuristic,
                                        )
-                                     }(new Exception("No path found"))
+                                     }(new NoPathFoundException)
             PathFindingResult(path, cost) = result
             endTime = LocalTime.now()
             _                     <- IO.println(pathMessage(path))
@@ -89,6 +106,9 @@ object CliMain
             _                     <- IO(System.err.println(resultDataMessage(cost, durationMillis)))
           } yield ExitCode.Success
       }
-//      .map(_.handleErrorWith(ex => IO.println(s"Error: ${ex}").as(ExitCode.Error)))
+      .map(_.recover { case e: NoPathFoundException =>
+        println(e.getMessage)
+        ExitCode.Success
+      })
 
 }

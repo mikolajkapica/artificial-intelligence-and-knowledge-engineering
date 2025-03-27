@@ -2,9 +2,8 @@ package cli
 
 import algorithms.utils.Optimization
 import cats.implicits.catsSyntaxEq
-import domain.{Connection, Stop, Time}
-
-import java.time.LocalTime
+import domain.Connection
+import domain.Time
 
 object CliMessages {
 
@@ -16,7 +15,7 @@ object CliMessages {
     }
 
     val destinationMsg = destination match {
-      case stop: String => s"do $stop"
+      case stop: String        => s"do $stop"
       case stops: List[String] => s"przez ${stops.mkString(", ")}"
     }
 
@@ -26,7 +25,8 @@ object CliMessages {
   }
 
   def pathMessage(path: List[Connection]): String =
-    s"""Znaleziono trasę:
+    s"""
+       |Znaleziono trasę:
        |${path
         .foldLeft(List.empty[Connection]) {
           case (Nil, sample)                        => List(sample)
@@ -36,12 +36,14 @@ object CliMessages {
             else sample :: connections
         }
         .reverse
-        .map(vertex => s"${vertex.line}: ${vertex.departureTime} ${vertex.startStop} -> ${vertex.arrivalTime} ${vertex.endStop}")
+        .map(vertex =>
+          s"Linia ${vertex.line}: ${vertex.startStop.name} (${vertex.departureTime}) -> ${vertex.endStop.name} (${vertex.arrivalTime})"
+        )
         .mkString("\n")}
        |""".stripMargin
 
   def resultDataMessage(cost: Double, duration: Long) =
     s"""Koszt: $cost
-       |Czas obliczeń: $duration milisekund"""
+       |Czas obliczeń: $duration milisekund""".stripMargin
 
 }

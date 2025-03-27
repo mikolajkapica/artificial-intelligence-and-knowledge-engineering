@@ -1,7 +1,8 @@
 package algorithms
 
-import algorithms.CostFunctions.getCostFunction
+import algorithms.utils.CostFunctions.getCostFunction
 import algorithms.Heuristics.{Heuristic, getHeuristic}
+import algorithms.utils.Optimization
 import domain.*
 import munit.FunSuite
 

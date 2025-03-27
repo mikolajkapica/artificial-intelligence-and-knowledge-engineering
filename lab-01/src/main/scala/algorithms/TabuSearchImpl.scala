@@ -12,9 +12,7 @@ import scala.collection.mutable
 import scala.util.Random
 
 object TabuSearchImpl {
-
-  Random.setSeed(42)
-
+  
   private val StepLimit: Int = 5
   private val OpLimit: Int = 10
 

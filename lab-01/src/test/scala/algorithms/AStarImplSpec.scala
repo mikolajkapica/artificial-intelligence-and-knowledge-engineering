@@ -1,7 +1,8 @@
 package algorithms
 
-import algorithms.CostFunctions.getCostFunction
 import algorithms.Heuristics.{Heuristic, getHeuristic}
+import algorithms.utils.CostFunctions.getCostFunction
+import algorithms.utils.Optimization
 import domain.*
 import munit.FunSuite
 
@@ -19,9 +20,9 @@ class AStarImplSpec extends FunSuite {
   private val B = stop("B")
   private val C = stop("C")
   private val D = stop("D")
-  
+
   private val costFunction = getCostFunction(Optimization.Time)
-  
+
   private val heuristic = getHeuristic(Heuristic.TimeHaversine)
 
   test("selects fastest path considering transfer times") {
