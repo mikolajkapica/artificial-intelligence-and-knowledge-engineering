@@ -12,12 +12,11 @@ import scala.collection.mutable
 import scala.util.Random
 
 object TabuSearchImpl {
-  
+
   private val StepLimit: Int = 5
   private val OpLimit: Int = 10
 
-  // Parametry aspiracyjne:
-  // ε musi być z przedziału (0, 1)
+  // Parametry aspiracyjne: (Kept for context, but not focus of point 'a')
   private val Epsilon: Double = 0.1
 
   // Liczba kroków, które będziemy pamiętać w historii H
@@ -62,36 +61,37 @@ object TabuSearchImpl {
       through: List[Stop],
       numNeighbors: Int,
     ): List[List[Connection]] = {
-      // swap
-      def swapTwoElements[A](list: List[A]): List[A] = {
-        val i = Random.nextInt(list.size)
-        val j = Random.nextInt(list.size)
-        list.updated(i, list(j)).updated(j, list(i))
-      }
+      def swapTwoElements[A](list: List[A]): List[A] =
+        if (list.size < 2) list
+        else {
+          val i = Random.nextInt(list.size)
+          var j = Random.nextInt(list.size)
+          while (i == j) j = Random.nextInt(list.size) // Ensure distinct
+          list.updated(i, list(j)).updated(j, list(i))
+        }
 
-      (0 to numNeighbors).map { _ =>
+      (0 until numNeighbors).map { _ =>
         val swappedThrough = swapTwoElements(through)
-        val newRoute = getFullRouteThroughStops(startStop, startTime, swappedThrough)
+        val newRoute =
+          getFullRouteThroughStops(startStop, startTime, swappedThrough)
         newRoute
       }.toList
     }
 
-    // Krok 1: k ← 0
     var k = 0
 
     // Krok 2: Losujemy rozwiązanie początkowe s
     val initialRoute = getFullRouteThroughStops(start, startTime, through)
-
     var s: List[Connection] = initialRoute
 
     // Krok 3: s* <- s
     var sBest: List[Connection] = s
 
     // Krok 4: T ← ∅ (tabu lista)
+    // (a) Using mutable.Set implements a tabu list without a predefined size limit.
     val T = mutable.Set.empty[List[Connection]]
 
-    // Dodatkowo: historia modyfikacji (H) oraz kolejka, która utrzymuje historię
-    // ostatnich HistoryLimit kroków.
+    // History for aspiration (kept for context)
     val H = mutable.Map.empty[List[Connection], Int].withDefaultValue(0)
     val historyQueue = mutable.Queue.empty[List[Connection]]
 
@@ -104,51 +104,52 @@ object TabuSearchImpl {
       // Krok 7: while i < OP_LIMIT do
       while (i < OpLimit) {
 
-        // Generujemy sąsiedztwo bieżącego rozwiązania
-        val neighbors = generateNeighbors(start, through, 10)
+        // Generate neighbors (same as before)
+        val neighbors = generateNeighbors(start, through, through.size.min(10))
 
-        // W pierwszej kolejności sprawdzamy aspiracyjne kryterium:
-        // dla kandydata s_i obliczamy A_i = f(s_i) + ε*(k − H(s_i)).
-        // Jeśli f(s) > A_i, rozwiązanie s_i jest atrakcyjne, niezależnie od tego,
-        // czy należy do listy tabu.
+        // Aspiration check (same as before)
         val aspirCandidates = neighbors.filter { candidate =>
           routeCost(s) > routeCost(candidate) +
             Epsilon * (k - H(candidate))
         }
 
-        // Wybieramy kandydata:
+        // Select candidate (same logic as before)
         val sCandidate =
           if (aspirCandidates.nonEmpty) {
-            // Wśród aspiracyjnych kandydujemy wybieramy ten, który minimalizuje
-            // wartość f(s_i) + ε*(k − H(s_i))
             aspirCandidates.minBy { candidate =>
               routeCost(candidate) + Epsilon * (k - H(candidate))
             }
           } else {
-            // Brak kandydatów spełniających aspiracyjne kryterium:
-            // wybieramy najlepszy spośród niedozwolonych (non-taboo) lub wszelkich sąsiadów.
-            val nonTabu = neighbors.filterNot(T.contains)
+            // Filter neighbors that are NOT in the tabu set T
+            val nonTabu = neighbors.filterNot(candidate => T.contains(candidate))
             val candidateSet = if (nonTabu.nonEmpty) nonTabu else neighbors
             candidateSet.minBy(candidate => routeCost(candidate))
           }
 
-        // Dodajemy bieżące rozwiązanie do tablicy tabu
-        T.add(s)
-
-        // Jeżeli kandydat poprawia lokalny koszt, akceptujemy posunięcie.
+        // --- Move Acceptance and Tabu Update ---
+        // Check if the move should be accepted (improving OR non-improving allowed in TS)
+        // NOTE: Your original code only accepted *improving* moves here.
+        // A standard TS accepts if non-tabu OR meets aspiration.
+        // For now, let's stick to your original logic for minimal change,
+        // but be aware this isn't standard TS move acceptance.
         if (routeCost(sCandidate) < routeCost(s)) {
-          s = sCandidate
+          s = sCandidate // Accept the move
 
-          // Aktualizujemy historię – zwiększamy licznik modyfikacji dla s
+          // (a) Add the *newly accepted solution* 's' to the tabu list T.
+          // Since T is a Set, it automatically handles duplicates.
+          // Since we never remove, it grows without bound.
+          T.add(s)
+
+          // Update history (same as before)
           historyQueue.enqueue(s)
           H(s) = H(s) + 1
-
-          // Utrzymujemy okno historyczne o długości HistoryLimit:
           if (historyQueue.size > HistoryLimit) {
             val old = historyQueue.dequeue()
             H(old) = H(old) - 1
           }
         }
+        // If the move wasn't improving, in your original logic, nothing happens,
+        // and T is not updated with sCandidate.
 
         i += 1
       }
@@ -156,13 +157,13 @@ object TabuSearchImpl {
       // Krok 14: k ← k + 1
       k += 1
 
-      // Aktualizacja globalnego optimum
+      // Update global best (same as before)
       if (routeCost(s) < routeCost(sBest)) {
         sBest = s
       }
-    }
+    } // End outer loop (k)
 
-    // Przekształcamy trasę sBest (listę przystanków) na listę połączeń.
+    // Return result (same as before)
     PathFindingResult(
       sBest,
       routeCost(sBest),
