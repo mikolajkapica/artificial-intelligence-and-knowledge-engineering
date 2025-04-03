@@ -43,5 +43,3 @@ jobs:
         run: sbt test
       - name: Run scalafmtCheckAll
         run: sbt scalafmtCheckAll
-      - name: Run scalafixAll
-        run: sbt scalafixAll

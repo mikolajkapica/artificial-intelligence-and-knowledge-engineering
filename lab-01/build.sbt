@@ -4,7 +4,6 @@ inThisBuild(
     semanticdbEnabled := true,
     semanticdbVersion := scalafixSemanticdb.revision,
     scalafmtConfig := new File("../.scalafmt.conf"),
-    scalafixConfig := Option(new File("../.scalafix.conf")),
   )
 )
 
