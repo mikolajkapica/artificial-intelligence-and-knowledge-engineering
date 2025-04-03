@@ -2,7 +2,10 @@ package algorithms
 
 import utils.CostFunctions.CostFunction
 import cats.implicits.*
-import domain.{Connection, Graph, Stop, Time}
+import domain.Connection
+import domain.Graph
+import domain.Stop
+import domain.Time
 import utils.PathFindingResult
 
 import scala.collection.mutable

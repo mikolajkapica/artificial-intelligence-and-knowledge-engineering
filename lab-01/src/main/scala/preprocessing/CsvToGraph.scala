@@ -4,10 +4,16 @@ import boopickle.*
 import boopickle.Default.*
 import cats.effect.*
 import cats.implicits.*
-import domain.{Connection, Graph, Stop}
+import domain.Connection
+import domain.Graph
+import domain.Stop
 import fs2.data.csv.decodeUsingHeaders
-import fs2.io.file.{Files, Flags, Path}
-import fs2.{Pipe, Stream, text}
+import fs2.io.file.Files
+import fs2.io.file.Flags
+import fs2.io.file.Path
+import fs2.Pipe
+import fs2.Stream
+import fs2.text
 
 import java.io.FileOutputStream
 import java.nio.ByteBuffer

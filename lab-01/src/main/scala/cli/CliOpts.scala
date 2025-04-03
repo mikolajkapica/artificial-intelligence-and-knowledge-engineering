@@ -9,7 +9,9 @@ import cli.CliOpts.ProgramConfig.MultipleStopsConfig
 import cli.CliOpts.ProgramConfig.SingleEndStopConfig
 import com.monovore.decline.Opts
 import domain.Time
-import utils.{MultipleStopsPathFindingAlgorithm, Optimization, SingleEndStopPathFindingAlgorithm}
+import utils.MultipleStopsPathFindingAlgorithm
+import utils.Optimization
+import utils.SingleEndStopPathFindingAlgorithm
 
 object CliOpts {
 
@@ -40,8 +42,8 @@ object CliOpts {
     .option[Char](
       long = "optimize",
       short = "o",
-      metavar = "t lub p",
-      help = "Optimization criteria: t (time), p (transfers)",
+      metavar = "t, p lub c",
+      help = "Optimization criteria: t (time), p (transfers), c (combined)",
     )
     .mapValidated {
       case 't' => Optimization.Time.validNel

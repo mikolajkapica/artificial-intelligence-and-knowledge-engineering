@@ -5,7 +5,8 @@ import domain.Connection
 import domain.Graph
 import domain.Stop
 import domain.Time
-import utils.{PathFindingResult, reconstructPath}
+import utils.PathFindingResult
+import utils.reconstructPath
 
 import scala.collection.mutable
 

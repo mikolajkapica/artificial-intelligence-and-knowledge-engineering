@@ -64,7 +64,7 @@ class AStarImplSpec extends FunSuite {
           departureTime = Time(8, 0, 0),
           arrivalTime = Time(9, 15, 0),
           startStop = Stop("A", WGS84(0.0, 0.0)),
-          endStop =   Stop("C", WGS84(0.0, 0.0)),
+          endStop = Stop("C", WGS84(0.0, 0.0)),
         )
       ),
     )

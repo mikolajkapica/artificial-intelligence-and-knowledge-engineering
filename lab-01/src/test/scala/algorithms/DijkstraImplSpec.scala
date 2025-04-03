@@ -61,8 +61,8 @@ class DijkstraImplSpec extends FunSuite {
     assertEquals(
       result.path,
       List(
-        conn(A, C, time(8), time(9, 15)),
-      )
+        conn(A, C, time(8), time(9, 15))
+      ),
     )
   }
 
@@ -96,11 +96,12 @@ class DijkstraImplSpec extends FunSuite {
     )
 
     val result = DijkstraImpl.run(A, time(8), C, graph, costFunction).get
-    assertEquals(result.path,
+    assertEquals(
+      result.path,
       List(
         conn(A, D, time(8), time(8, 30)),
         conn(D, C, time(8, 45), time(10)),
-      )
+      ),
     )
   }
 }

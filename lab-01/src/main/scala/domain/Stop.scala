@@ -44,7 +44,7 @@ object Stop:
     IO.fromEither(parse(stop, graph).leftMap(new Exception(_)))
 
 case class WGS84(latitude: Double, longitude: Double) {
-  
+
   def distanceTo(to: WGS84): Double = Distance.haversineDistance(this, to)
 
 }
