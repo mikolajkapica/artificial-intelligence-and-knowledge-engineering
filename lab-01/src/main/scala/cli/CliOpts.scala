@@ -1,17 +1,15 @@
 package cli
 
-import algorithms.utils.MultipleStopsPathFindingAlgorithm.TabuSearch
-import algorithms.utils.SingleEndStopPathFindingAlgorithm.AStar
-import algorithms.utils.SingleEndStopPathFindingAlgorithm.AStarOptimized
-import algorithms.utils.SingleEndStopPathFindingAlgorithm.Dijkstra
-import algorithms.utils.MultipleStopsPathFindingAlgorithm
-import algorithms.utils.Optimization
-import algorithms.utils.SingleEndStopPathFindingAlgorithm
+import utils.MultipleStopsPathFindingAlgorithm.TabuSearch
+import utils.SingleEndStopPathFindingAlgorithm.AStar
+import utils.SingleEndStopPathFindingAlgorithm.AStarOptimized
+import utils.SingleEndStopPathFindingAlgorithm.Dijkstra
 import cats.syntax.all.*
 import cli.CliOpts.ProgramConfig.MultipleStopsConfig
 import cli.CliOpts.ProgramConfig.SingleEndStopConfig
 import com.monovore.decline.Opts
 import domain.Time
+import utils.{MultipleStopsPathFindingAlgorithm, Optimization, SingleEndStopPathFindingAlgorithm}
 
 object CliOpts {
 

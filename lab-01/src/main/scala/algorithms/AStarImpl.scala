@@ -1,12 +1,11 @@
 package algorithms
 
-import algorithms.utils.CostFunctions.CostFunction
-import algorithms.utils.PathFindingResult
-import algorithms.utils.reconstructPath
+import utils.CostFunctions.CostFunction
 import domain.Connection
 import domain.Graph
 import domain.Stop
 import domain.Time
+import utils.{PathFindingResult, reconstructPath}
 
 import scala.collection.mutable
 

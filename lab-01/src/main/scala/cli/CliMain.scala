@@ -12,11 +12,9 @@ import fs2.io.file.Path
 import ProgramConfig.*
 import algorithms.Heuristics.Heuristic
 import algorithms.Heuristics.getHeuristic
-import algorithms.utils.CostFunctions.getCostFunction
-import algorithms.utils.NoPathFoundException
-import algorithms.utils.PathFindingResult
-import algorithms.utils.findShortestPath
+import utils.CostFunctions.getCostFunction
 import preprocessing.CsvToGraph.getCachedGraphOrReadAndCache
+import utils.{NoPathFoundException, PathFindingResult, findShortestPath}
 
 import java.time.LocalTime
 import java.time.temporal.ChronoUnit

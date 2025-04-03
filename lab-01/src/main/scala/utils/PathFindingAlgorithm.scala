@@ -1,9 +1,9 @@
-package algorithms.utils
+package utils
 
 import algorithms.*
-import algorithms.utils.CostFunctions.CostFunction
-import algorithms.utils.MultipleStopsPathFindingAlgorithm.*
-import algorithms.utils.SingleEndStopPathFindingAlgorithm.*
+import CostFunctions.CostFunction
+import MultipleStopsPathFindingAlgorithm.*
+import SingleEndStopPathFindingAlgorithm.*
 import domain.Connection
 import domain.Graph
 import domain.Stop

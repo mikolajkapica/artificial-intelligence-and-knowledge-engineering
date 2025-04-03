@@ -1,11 +1,11 @@
 package algorithms
 
-import algorithms.utils.CostFunctions.getCostFunction
+import utils.CostFunctions.getCostFunction
 import algorithms.Heuristics.Heuristic
 import algorithms.Heuristics.getHeuristic
-import algorithms.utils.Optimization
 import domain.*
 import munit.FunSuite
+import utils.Optimization
 
 import scala.util.Random
 

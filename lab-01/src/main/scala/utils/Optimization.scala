@@ -1,4 +1,4 @@
-package algorithms.utils
+package utils
 
 enum Optimization:
   case Time

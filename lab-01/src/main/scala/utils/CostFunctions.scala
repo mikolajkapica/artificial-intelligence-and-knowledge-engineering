@@ -1,4 +1,4 @@
-package algorithms.utils
+package utils
 
 import domain.Connection
 import domain.Time

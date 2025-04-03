@@ -2,10 +2,10 @@ package algorithms
 
 import algorithms.Heuristics.Heuristic
 import algorithms.Heuristics.getHeuristic
-import algorithms.utils.CostFunctions.getCostFunction
-import algorithms.utils.Optimization
+import utils.CostFunctions.getCostFunction
 import domain.*
 import munit.FunSuite
+import utils.Optimization
 
 import scala.collection.immutable.Map
 

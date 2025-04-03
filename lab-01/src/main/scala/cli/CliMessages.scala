@@ -1,9 +1,9 @@
 package cli
 
-import algorithms.utils.Optimization
 import cats.implicits.catsSyntaxEq
 import domain.Connection
 import domain.Time
+import utils.Optimization
 
 object CliMessages {
 
