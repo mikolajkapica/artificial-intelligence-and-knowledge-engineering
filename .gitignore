@@ -140,7 +140,6 @@ gradle-app.setting
 .bsp
 
 ### Custom
-.kotlin
-**/.kobweb/*
-!**/.kobweb/conf.yaml
-server/src/main/resources/db/migration/migration.sql
+*.csv
+*.bin
+.cache/
