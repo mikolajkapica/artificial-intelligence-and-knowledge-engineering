@@ -43,3 +43,5 @@ jobs:
         run: sbt test
       - name: Run scalafmtCheckAll
         run: sbt scalafmtCheckAll
+      - name: Sbt Dependency Submission
+        uses: scalacenter/sbt-dependency-submission@v3.1.0
