@@ -30,6 +30,10 @@ enum Player:
     case Black => "B"
     case White => "W"
 
+  def square: Square = this match
+    case Black => Square.B
+    case White => Square.W
+
 case class Position(row: Int, col: Int) // TODO: Add type constraints
 
 case class Move(from: Position, to: Position):
@@ -47,19 +51,17 @@ case class Board(grid: Vector[Vector[Square]], numRows: Int, numCols: Int) {
       && pos.col < numCols
 
   def applyMove(move: Move, player: Player): Board = {
-    val newGrid = grid
-      .updated(move.from.row, grid(move.from.row).updated(move.from.col, Square.Empty))
-      .updated(
-        move.to.row,
-        grid(move.to.row).updated(
-          move.to.col,
-          player match {
-            case Player.Black => Square.B
-            case Player.White => Square.W
-          }
-        )
-      )
-    this.copy(grid = newGrid)
+    val gridWithSourcePieceRemoved = grid.updated(
+      move.from.row,
+      grid(move.from.row).updated(move.from.col, Square.Empty)
+    )
+
+    val gridWithTargetPieceTaken = gridWithSourcePieceRemoved.updated(
+      move.to.row,
+      gridWithSourcePieceRemoved(move.to.row).updated(move.to.col, player.square)
+    )
+
+    this.copy(grid = gridWithTargetPieceTaken)
   }
 
   override def toString: String =
@@ -73,24 +75,24 @@ object Board {
     )
     numRows = config.size
     grid <- config.toVector.zipWithIndex.traverse { case (rowStr, rowIndex) =>
-        val parts = rowStr.split(' ')
-        if (parts.length != expectedNumCols) {
-          Left(
-            s"Inconsistent column count at row ${rowIndex + 1}. Expected $expectedNumCols columns, but found ${parts.length}. Row: '$rowStr'"
-          )
-        } else {
-          parts.toVector.zipWithIndex.traverse { case (squareStr, colIndex) =>
-            if (squareStr.length == 1) {
-              Square.fromChar(squareStr.charAt(0)).toRight(
-                s"Invalid character '${squareStr.charAt(0)}' at row ${rowIndex + 1}, column ${colIndex + 1} (part: '$squareStr')."
-              )
-            } else {
-              Left(
-                s"Invalid square string '$squareStr' at row ${rowIndex + 1}, column ${colIndex + 1}. Expected a single character representation."
-              )
-            }
+      val parts = rowStr.split(' ')
+      if (parts.length != expectedNumCols) {
+        Left(
+          s"Inconsistent column count at row ${rowIndex + 1}. Expected $expectedNumCols columns, but found ${parts.length}. Row: '$rowStr'"
+        )
+      } else {
+        parts.toVector.zipWithIndex.traverse { case (squareStr, colIndex) =>
+          if (squareStr.length == 1) {
+            Square.fromChar(squareStr.charAt(0)).toRight(
+              s"Invalid character '${squareStr.charAt(0)}' at row ${rowIndex + 1}, column ${colIndex + 1} (part: '$squareStr')."
+            )
+          } else {
+            Left(
+              s"Invalid square string '$squareStr' at row ${rowIndex + 1}, column ${colIndex + 1}. Expected a single character representation."
+            )
           }
         }
       }
+    }
   } yield Board(grid, numRows, expectedNumCols)
 }

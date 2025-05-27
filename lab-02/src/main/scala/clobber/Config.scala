@@ -2,9 +2,11 @@ package clobber
 
 import clobber.ai.Heuristic
 import cats.effect.IO
+import clobber.Algorithm.Minimax
 import clobber.ai.MobilityHeuristic
 import clobber.ai.PieceCountHeuristic
 import clobber.ai.PositionalHeuristic
+
 import scala.io.StdIn
 
 enum Algorithm:
@@ -38,6 +40,7 @@ def getAIConfig(
     defaultDepth: Int,
     defaultAlgorithm: Algorithm
 ): IO[PlayerAIConfig] = {
+  return IO.pure(PlayerAIConfig(PieceCountHeuristic, 2, Minimax))
   val playerName = player.toString
   for {
     _ <- IO.println(
@@ -67,9 +70,25 @@ def getAIConfig(
   } yield PlayerAIConfig(heuristic, depth, algorithm)
 }
 
-def readBoardConfig: IO[List[String]] = IO {
-  LazyList
-    .continually(StdIn.readLine())
-    .takeWhile(line => line != null && line.nonEmpty)
-    .toList
+def readBoardConfig: IO[List[String]] = {
+  val in =
+    raw"""W B W B W B W B W B
+       |B W B W B W B W B W
+       |W B W B W B W B W B
+       |B W B W B W B W B W
+       |W B W B W B W B W B
+       |B W B W B W B W B W
+       |W B W B W B W B W B
+       |B W B W B W B W B W
+       |W B W B W B W B W B
+       |B W B W B W B W B W""".stripMargin
+
+  IO.pure(in.split("\n").toList)
 }
+
+//def readBoardConfig: IO[List[String]] = IO {
+//  LazyList
+//    .continually(StdIn.readLine())
+//    .takeWhile(line => line != null && line.nonEmpty)
+//    .toList
+//}

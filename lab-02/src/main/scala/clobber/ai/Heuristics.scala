@@ -3,15 +3,7 @@ package clobber.ai
 import clobber.{Board, Player, Square}
 import clobber.generateMoves
 
-trait Heuristic {
-  /**
-   * Evaluates the board state from the perspective of the `forPlayer`.
-   * A higher score is better for the `forPlayer`.
-   *
-   * @param board The current game board.
-   * @param forPlayer The player for whom the evaluation is being made.
-   * @return The heuristic value of the board state.
-   */
+trait Heuristic:
   def evaluate(board: Board, forPlayer: Player): Double
 
   override def toString: String = this match {
@@ -19,16 +11,14 @@ trait Heuristic {
     case PieceCountHeuristic => "piececount"
     case PositionalHeuristic => "positional"
   }
-}
 
-object Heuristic {
+object Heuristic:
   def parse(name: String): Option[Heuristic] = name.toLowerCase match {
     case "mobility"   => Some(MobilityHeuristic)
     case "piececount" => Some(PieceCountHeuristic)
     case "positional" => Some(PositionalHeuristic)
     case _            => None
   }
-}
 
 object MobilityHeuristic extends Heuristic {
   override def evaluate(board: Board, forPlayer: Player): Double = {

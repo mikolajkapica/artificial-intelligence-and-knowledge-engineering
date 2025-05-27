@@ -4,24 +4,11 @@ import clobber.{Board, Move, Player}
 import clobber.generateMoves
 
 object AlphaBetaSearch {
-
-  /**
-   * Performs an alpha-beta search to find the best move.
-   *
-   * @param board            The current board state.
-   * @param depth            The maximum search depth.
-   * @param alpha            The current alpha value (best score for maximizer).
-   * @param beta             The current beta value (best score for minimizer).
-   * @param currentPlayer      The player whose turn it is to move in the current state.
-   * @param maximizingPlayer The player whose perspective the search is trying to maximize (e.g., Player B at the root).
-   * @param heuristic        The heuristic function to evaluate non-terminal states or terminal states at max depth.
-   * @return A tuple containing the best Option[Move], its score (Double), and the number of nodes visited (Long).
-   */
   def alphaBeta(
       board: Board,
       depth: Int,
-      alpha: Double, // Initial alpha for this node's context
-      beta: Double,  // Initial beta for this node's context
+      alpha: Double,
+      beta: Double, 
       currentPlayer: Player,
       maximizingPlayer: Player,
       heuristic: Heuristic

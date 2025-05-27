@@ -1,25 +1,21 @@
 package clobber
 
-import cats.effect._
-import cats.syntax.all._
-import cats.syntax.option._
+import cats.effect.*
+import cats.syntax.all.*
+import clobber.getAIConfig
 
-import clobber.ai._
-import clobber.ai.MinimaxSearch
-import java.util.concurrent.TimeUnit
-import scala.io.StdIn
-import clobber.{getAIConfig, PlayerAIConfig}
+import scala.concurrent.duration.Duration
 
 object Main extends IOApp.Simple {
+  override def runtimeConfig =
+    super.runtimeConfig.copy(cpuStarvationCheckInitialDelay = Duration.Inf)
+
   override def run: IO[Unit] = (for {
     configBlack <- getAIConfig(Player.Black, defaultDepth = 3, defaultAlgorithm = Algorithm.Minimax)
     configWhite <- getAIConfig(Player.White, defaultDepth = 3, defaultAlgorithm = Algorithm.AlphaBeta)
     aiConfigs = AiConfigs(configBlack, configWhite)
 
-    _ <- IO.println(
-      s"""|
-          |Enter initial board configuration (m lines, n space-separated chars, end with an empty line):""".stripMargin
-    )
+    _ <- IO.println("Enter initial board configuration (m lines, n space-separated chars, end with an empty line):")
     initialBoard <- readBoardConfig.map(Board.parse).map(_.leftMap(Throwable(_))).flatMap(IO.fromEither)
 
     nodesVisitedRef <- Ref[IO].of(0L)
@@ -27,11 +23,10 @@ object Main extends IOApp.Simple {
     initialPlayer = Player.Black
 
     _ <- IO.println(
-      s"""|
-          |Starting game. 
-          |Black AI: ${configBlack.algorithm}, Depth ${configBlack.depth}, Heuristic ${configBlack.heuristic}
-          |White AI: ${configWhite.algorithm}, Depth ${configWhite.depth}, Heuristic ${configWhite.heuristic}
-          |""".stripMargin
+      s"""Starting game.
+         |Black AI: ${configBlack.algorithm}, depth ${configBlack.depth}, heuristic ${configBlack.heuristic}
+         |White AI: ${configWhite.algorithm}, depth ${configWhite.depth}, heuristic ${configWhite.heuristic}
+         |""".stripMargin
     )
 
     gameResult <- gameLoop(initialBoard, initialPlayer, rounds = 0, aiConfigs, nodesVisitedRef)
@@ -41,15 +36,17 @@ object Main extends IOApp.Simple {
     totalVisitedNodes <- nodesVisitedRef.get
 
     _ <- IO.println(
-      s"""|--- Game Over ---
+      s"""|
+          |--- Game Over ---
           |Final board:
           |$finalBoard
           |Rounds: $finalRounds
-          |Winner: ${winner.shortName}""".stripMargin
+          |Winner: ${winner.shortName}
+          |""".stripMargin
     )
     _ <- IO(System.err.println(
-      s"""|Visited nodes: $totalVisitedNodes
-          |Execution time: ${endTime - startTime}""".stripMargin
+      f"""|Visited nodes: $totalVisitedNodes
+          |Execution time: ${(endTime - startTime).toMillis / 1000.0}%.2f seconds""".stripMargin
     ))
   } yield ()).onError {
     case e: NumberFormatException =>
