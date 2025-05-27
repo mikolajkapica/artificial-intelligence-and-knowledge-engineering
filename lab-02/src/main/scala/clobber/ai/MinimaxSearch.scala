@@ -1,7 +1,7 @@
 package clobber.ai
 
-import clobber.model.{Board, Move, Player}
-import clobber.game.MoveGenerator
+import clobber.{Board, Move, Player}
+import clobber.generateMoves
 // Heuristic trait is also needed for the function signature
 import clobber.ai.Heuristic
 
@@ -27,7 +27,7 @@ object MinimaxSearch {
 
     var nodesVisitedThisCall: Long = 1L // Count current node
 
-    val possibleMoves = MoveGenerator.generateMoves(board, currentPlayer)
+    val possibleMoves = generateMoves(board, currentPlayer)
 
     // Base Case: Depth limit reached or game over for currentPlayer
     if (depth == 0 || possibleMoves.isEmpty) {

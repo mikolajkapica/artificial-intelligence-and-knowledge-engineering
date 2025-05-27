@@ -1,9 +1,7 @@
 package clobber.ai
 
-import clobber.model.{Board, Move, Player}
-import clobber.game.MoveGenerator
-
-// No need for ArrayBuffer or ListBuffer with the iterator approach for early exit
+import clobber.{Board, Move, Player}
+import clobber.generateMoves
 
 object AlphaBetaSearch {
 
@@ -31,7 +29,7 @@ object AlphaBetaSearch {
     
     var nodesThisCall: Long = 1L // Count current node evaluation
 
-    val possibleMoves = MoveGenerator.generateMoves(board, currentPlayer)
+    val possibleMoves = generateMoves(board, currentPlayer)
 
     // Base Case: Depth limit reached or game over for currentPlayer (no moves possible)
     if (depth == 0 || possibleMoves.isEmpty) {

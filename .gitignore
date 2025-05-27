@@ -143,3 +143,19 @@ gradle-app.setting
 *.csv
 *.bin
 .cache/
+
+# Generated Metals (Scala Language Server) files
+# Reference: https://scalameta.org/metals/
+.metals/
+.bloop/
+**/project/metals.sbt
+
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+
+# Local History for Visual Studio Code
+.history/

@@ -1,7 +1,7 @@
 package clobber.ai
 
-import clobber.model.{Board, Player, Square}
-import clobber.game.MoveGenerator
+import clobber.{Board, Player, Square}
+import clobber.generateMoves
 
 trait Heuristic {
   /**
@@ -13,12 +13,27 @@ trait Heuristic {
    * @return The heuristic value of the board state.
    */
   def evaluate(board: Board, forPlayer: Player): Double
+
+  override def toString: String = this match {
+    case MobilityHeuristic   => "mobility"
+    case PieceCountHeuristic => "piececount"
+    case PositionalHeuristic => "positional"
+  }
+}
+
+object Heuristic {
+  def parse(name: String): Option[Heuristic] = name.toLowerCase match {
+    case "mobility"   => Some(MobilityHeuristic)
+    case "piececount" => Some(PieceCountHeuristic)
+    case "positional" => Some(PositionalHeuristic)
+    case _            => None
+  }
 }
 
 object MobilityHeuristic extends Heuristic {
   override def evaluate(board: Board, forPlayer: Player): Double = {
-    val myMoves = MoveGenerator.generateMoves(board, forPlayer).size.toDouble
-    val opponentMoves = MoveGenerator.generateMoves(board, forPlayer.other).size.toDouble
+    val myMoves = generateMoves(board, forPlayer).size.toDouble
+    val opponentMoves = generateMoves(board, forPlayer.other).size.toDouble
     myMoves - opponentMoves
   }
 }
