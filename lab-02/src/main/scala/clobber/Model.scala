@@ -1,8 +1,7 @@
 package clobber
 
-import cats.syntax.traverse._
-import cats.instances.list._
-import cats.instances.vector._
+import cats.instances.vector.*
+import cats.syntax.traverse.*
 
 enum Square:
   case B, W, Empty
@@ -34,7 +33,7 @@ enum Player:
     case Black => Square.B
     case White => Square.W
 
-case class Position(row: Int, col: Int) // TODO: Add type constraints
+case class Position(row: Int, col: Int)
 
 case class Move(from: Position, to: Position):
   override def toString: String = s"(${from.row},${from.col})->(${to.row},${to.col})"

@@ -1,13 +1,8 @@
-package clobber
+package clobber.ai
 
-import clobber.ai.Heuristic
 import cats.effect.IO
-import clobber.Algorithm.Minimax
-import clobber.ai.MobilityHeuristic
-import clobber.ai.PieceCountHeuristic
-import clobber.ai.PositionalHeuristic
-
-import scala.io.StdIn
+import clobber.Player
+import clobber.ai.Algorithm.{AlphaBeta, Minimax}
 
 enum Algorithm:
   case Minimax, AlphaBeta
@@ -40,16 +35,17 @@ def getAIConfig(
     defaultDepth: Int,
     defaultAlgorithm: Algorithm
 ): IO[PlayerAIConfig] = {
-  return IO.pure(PlayerAIConfig(PieceCountHeuristic, 2, Minimax))
   val playerName = player.toString
   for {
     _ <- IO.println(
       s"""|
           |Configuring AI for $playerName:
-          |Select heuristic for $playerName (mobility, piececount, positional):""".stripMargin
+          |Select heuristic for $playerName (mobility, piececount, positional, newtrends, opponentpenalty, groupinglonely):""".stripMargin
     )
     heuristic <- IO.readLine.map(_.trim.toLowerCase).map(Heuristic.parse).flatMap(IO.fromOption(_)(
-      new IllegalArgumentException(s"Unknown heuristic. Valid options: mobility, piececount, positional.")
+      new IllegalArgumentException(
+        s"Unknown heuristic. Valid options: mobility, piececount, positional, newtrends, opponentpenalty, groupinglonely"
+      )
     ))
 
     _ <- IO.println(s"Enter search depth for $playerName (e.g., $defaultDepth):")
@@ -70,9 +66,16 @@ def getAIConfig(
   } yield PlayerAIConfig(heuristic, depth, algorithm)
 }
 
-def readBoardConfig: IO[List[String]] = {
-  val in =
-    raw"""W B W B W B W B W B
+def readBoardConfig: IO[List[String]] = IO {
+  ()
+//  LazyList
+//    .continually(StdIn.readLine())
+//    .takeWhile(line => line != null && line.nonEmpty)
+//    .toList
+}.flatMap { _ => IO.pure(`10x10`.split('\n').toList) }
+
+val `10x10` =
+  raw"""W B W B W B W B W B
        |B W B W B W B W B W
        |W B W B W B W B W B
        |B W B W B W B W B W
@@ -83,12 +86,16 @@ def readBoardConfig: IO[List[String]] = {
        |W B W B W B W B W B
        |B W B W B W B W B W""".stripMargin
 
-  IO.pure(in.split("\n").toList)
-}
+val `5x5` =
+  raw"""W B W B W
+       |B W B W B
+       |W B W B W
+       |B W B W B
+       |W B W B W""".stripMargin
 
-//def readBoardConfig: IO[List[String]] = IO {
-//  LazyList
-//    .continually(StdIn.readLine())
-//    .takeWhile(line => line != null && line.nonEmpty)
-//    .toList
-//}
+val `5x8` =
+  raw"""W B W B W B W B
+       |B W B W B W B W
+       |W B W B W B W B
+       |B W B W B W B W
+       |W B W B W B W B""".stripMargin

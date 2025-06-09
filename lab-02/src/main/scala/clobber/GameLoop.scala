@@ -1,21 +1,16 @@
 package clobber
 
-import clobber.Board
-import clobber.Player
-import cats.effect.kernel.Ref
 import cats.effect.IO
-import cats.syntax.all._
-import clobber.generateMoves
-import clobber.Move
-import clobber.ai.MinimaxSearch
-import clobber.ai.AlphaBetaSearch
+import cats.effect.kernel.Ref
+import clobber.ai.*
 
 def generateMoves(board: Board, player: Player): List[Move] = (for {
   row <- 0 until board.numRows
   column <- 0 until board.numCols
   currentPos = Position(row, column)
   square <- board.getSquare(currentPos).toList
-  if (player == Player.Black && square == Square.B) || (player == Player.White && square == Square.W)
+  if (player == Player.Black && square == Square.B)
+    || (player == Player.White && square == Square.W)
   targetPosition <- List(
     Position(row + 1, column),
     Position(row - 1, column),

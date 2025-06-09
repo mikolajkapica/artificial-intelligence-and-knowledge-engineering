@@ -1,8 +1,6 @@
 package clobber.ai
 
-import clobber.{Board, Move, Player}
-import clobber.generateMoves
-import clobber.ai.Heuristic
+import clobber.{Board, Move, Player, generateMoves}
 
 object MinimaxSearch {
 
@@ -27,10 +25,7 @@ object MinimaxSearch {
     if (currentPlayer == maximizingPlayer) {
       var maxEval = Double.NegativeInfinity
 
-      for ((move, i) <- possibleMoves.zipWithIndex) {
-        if (depth == 3) {
-          println(s"Evaluating move ${i + 1}/${possibleMoves.size}: $move for player $currentPlayer")
-        }
+      for (move <- possibleMoves) {
         val nextBoard = board.applyMove(move, currentPlayer)
 
         val (_, eval, nodesFromRec) = minimax(nextBoard, depth - 1, currentPlayer.other, maximizingPlayer, heuristic)

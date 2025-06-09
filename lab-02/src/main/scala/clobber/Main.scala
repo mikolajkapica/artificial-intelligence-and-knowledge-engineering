@@ -1,16 +1,17 @@
 package clobber
 
 import cats.effect.*
+import cats.effect.unsafe.IORuntimeConfig
 import cats.syntax.all.*
-import clobber.getAIConfig
+import clobber.ai.{AiConfigs, Algorithm, getAIConfig, readBoardConfig}
 
 import scala.concurrent.duration.Duration
 
-object Main extends IOApp.Simple {
-  override def runtimeConfig =
+object Main extends IOApp:
+  override def runtimeConfig: IORuntimeConfig =
     super.runtimeConfig.copy(cpuStarvationCheckInitialDelay = Duration.Inf)
 
-  override def run: IO[Unit] = (for {
+  override def run(args: List[String]): IO[ExitCode] = (for {
     configBlack <- getAIConfig(Player.Black, defaultDepth = 3, defaultAlgorithm = Algorithm.Minimax)
     configWhite <- getAIConfig(Player.White, defaultDepth = 3, defaultAlgorithm = Algorithm.AlphaBeta)
     aiConfigs = AiConfigs(configBlack, configWhite)
@@ -48,12 +49,15 @@ object Main extends IOApp.Simple {
       f"""|Visited nodes: $totalVisitedNodes
           |Execution time: ${(endTime - startTime).toMillis / 1000.0}%.2f seconds""".stripMargin
     ))
-  } yield ()).onError {
-    case e: NumberFormatException =>
-      IO(System.err.println(s"Input Error: ${e.getMessage}"))
-    case e: IllegalArgumentException =>
-      IO(System.err.println(s"Configuration Error: ${e.getMessage}"))
-    case e: Exception =>
-      IO(System.err.println(s"An unexpected error occurred: ${e.getMessage}")) >> IO(e.printStackTrace())
+  } yield ExitCode.Success).onError { err =>
+    val errIO = err match {
+      case e: NumberFormatException =>
+        IO(System.err.println(s"Input Error: ${e.getMessage}"))
+      case e: IllegalArgumentException =>
+        IO(System.err.println(s"Configuration Error: ${e.getMessage}"))
+      case e: Exception =>
+        IO(System.err.println(s"An unexpected error occurred: ${e.getMessage}")) >> IO(e.printStackTrace())
+    }
+    errIO >> IO.pure(ExitCode.Error)
   }
-}
+end Main
