@@ -4,197 +4,195 @@ import weka.classifiers.Classifier
 import weka.classifiers.Evaluation
 import weka.classifiers.bayes.NaiveBayes
 import weka.classifiers.functions.SMO
-import weka.classifiers.trees.J48
-import weka.classifiers.trees.RandomForest
-import weka.core.Instances
+import weka.classifiers.trees.{J48, RandomForest}
+import weka.core.{Instances, Utils}
 import weka.core.converters.CSVLoader
-import weka.core.Utils
 import weka.filters.Filter
-import weka.filters.unsupervised.attribute.Normalize
-import weka.filters.unsupervised.attribute.NumericToNominal
-import weka.filters.unsupervised.attribute.Standardize
-import weka.filters.unsupervised.attribute.ReplaceMissingValues
+import weka.filters.unsupervised.attribute.{Normalize, NumericToNominal, Standardize, ReplaceMissingValues}
+
 import java.io.File
-import java.util.Objects
-import java.util.Random
+import java.util.{Objects, Random}
 
-object CardioClassifier {
-  private val DATASET_PATH = "cardiotocography_v2.csv"
-  private val FOLDS = 10
 
-  private def instances: Instances = {
+@main
+def main(): Unit = {
+  val config = ExperimentConfig()
+  val data = DataPreprocessor.loadData(config)
+
+  printDataExploration(data)
+  printDataPreparation()
+
+  val (rawData, normalizedData, standardizedData) = DataPreprocessor.preprocessData(data)
+  val experimentRunner = new ExperimentRunner(config)
+
+  println("\n--- WYNIKI DLA DANYCH SUROWYCH ---")
+  experimentRunner.runExperiments(rawData)
+
+  println("\n--- WYNIKI DLA DANYCH ZNORMALIZOWANYCH ---")
+  experimentRunner.runExperiments(normalizedData)
+
+  println("\n--- WYNIKI DLA DANYCH STANDARYZOWANYCH ---")
+  experimentRunner.runExperiments(standardizedData)
+
+  runBonusExperiments(rawData)
+}
+
+case class ExperimentConfig(
+    datasetPath: String = "cardiotocography_v2.csv",
+    folds: Int = 10,
+    randomSeed: Int = 1
+)
+
+case class ClassifierConfig(
+    name: String,
+    classifier: Classifier,
+    description: String
+)
+
+object DataPreprocessor {
+  def loadData(config: ExperimentConfig): Instances = {
     val loader = new CSVLoader
     loader.setSource(
-      new File(Objects.requireNonNull(CardioClassifier.getClass.getClassLoader.getResource(DATASET_PATH)).getFile)
+      new File(Objects.requireNonNull(getClass.getClassLoader.getResource(config.datasetPath)).getFile)
     )
     var data = loader.getDataSet
+
+    // Find the index of the CLASS column
+    val classIndex = data.attribute("CLASS").index()
+
+    // Convert class attribute to nominal
     val converter = new NumericToNominal
-    converter.setAttributeIndices("last")
+    converter.setAttributeIndices(s"${classIndex + 1}") // Weka uses 1-based indexing
     converter.setInputFormat(data)
     data = Filter.useFilter(data, converter)
 
-    if (data.classIndex == -1) data.setClassIndex(data.numAttributes - 1)
-
+    // Set CLASS as the class attribute
+    data.setClassIndex(classIndex)
     data
   }
 
-  def main(args: Array[String]): Unit = {
-    var data = instances
-
-    println(
-      s"""
-        |=========================================
-        |KROK 1: EKSPLORACJA DANYCH
-        |=========================================
-        ||Liczba instancji: %d
-        ||Liczba atrybutów: %d
-        ||--- Podsumowanie zbioru danych ---
-        |${data.toSummaryString}
-        |""".stripMargin
-    )
-
-    println(
-      """
-        |=========================================
-        |KROK 2: PRZYGOTOWANIE DANYCH
-        |=========================================
-        |Dane zostaną przetworzone na 3 sposoby:
-        |1. Dane surowe (bez przetwarzania)
-        |2. Dane znormalizowane
-        |3. Dane standaryzowane
-        |Do oceny modeli zostanie użyta walidacja krzyżowa (10-krotna).
-        |""".stripMargin
-    )
-
-    // Sprawdzenie i uzupełnienie brakujących wartości
+  def preprocessData(data: Instances): (Instances, Instances, Instances) = {
+    // Handle missing values
     val replacer = new ReplaceMissingValues
     replacer.setInputFormat(data)
-    data = Filter.useFilter(data, replacer)
+    val cleanData = Filter.useFilter(data, replacer)
 
-    // Przygotowanie przefiltrowanych wersji danych
-    // Normalizacja
+    // Normalize
     val normalizeFilter = new Normalize
-    normalizeFilter.setInputFormat(data)
-    val normalizedData = Filter.useFilter(data, normalizeFilter)
+    normalizeFilter.setInputFormat(cleanData)
+    val normalizedData = Filter.useFilter(cleanData, normalizeFilter)
 
-    // Standaryzacja
+    // Standardize
     val standardizeFilter = new Standardize
-    standardizeFilter.setInputFormat(data)
-    val standardizedData = Filter.useFilter(data, standardizeFilter)
+    standardizeFilter.setInputFormat(cleanData)
+    val standardizedData = Filter.useFilter(cleanData, standardizeFilter)
 
-    println(
-      """
-        |=========================================
-        |KROK 3 i 4: KLASYFIKACJA I OCENA
-        |=========================================
-        |""".stripMargin
-    )
+    (cleanData, normalizedData, standardizedData)
+  }
+}
 
-    println(
-      """
-        |--- WYNIKI DLA DANYCH SUROWYCH ---
-        |""".stripMargin
-    )
-    runExperiments(data)
+class ExperimentRunner(config: ExperimentConfig) {
+  private def createClassifiers: List[ClassifierConfig] = List(
+    ClassifierConfig("Naive Bayes", new NaiveBayes, "Naive Bayes"),
 
-    println(
-      """
-        |--- WYNIKI DLA DANYCH ZNORMALIZOWANYCH ---
-        |""".stripMargin
-    )
-    runExperiments(normalizedData)
+    // J48 variants
+    ClassifierConfig("J48 (default)", new J48, "J48 (default: C=0.25, M=2)"),
+    ClassifierConfig(
+      "J48 (less pruning)", {
+        val j48 = new J48
+        j48.setConfidenceFactor(0.5f)
+        j48
+      },
+      "J48 (less pruning: C=0.5, M=2)"
+    ),
+    ClassifierConfig(
+      "J48 (more pruning)", {
+        val j48 = new J48
+        j48.setConfidenceFactor(0.1f)
+        j48.setMinNumObj(10)
+        j48
+      },
+      "J48 (more pruning: C=0.1, M=10)"
+    ),
+    ClassifierConfig("Random Forest", new RandomForest, "Random Forest"),
+    ClassifierConfig("SVM", new SMO, "SVM (SMO)")
+  )
 
-    println(
-      """
-        |--- WYNIKI DLA DANYCH STANDARYZOWANYCH ---
-        |""".stripMargin
-    )
-    runExperiments(standardizedData)
-
-    println(
-      """
-        |=========================================
-        |BONUS: ŁAGODZENIE PRZEUCZENIA (J48)
-        |=========================================
-        |Porównanie drzewa bez przycinania (podatne na przeuczenie) z drzewem z agresywnym przycinaniem.
-        |""".stripMargin
-    )
-
-    val unprunedTree = new J48
-    unprunedTree.setUnpruned(true)
-    println(
-      """
-        |--- Drzewo J48 bez przycinania ---
-        |""".stripMargin
-    )
-    evaluateAndPrintResults(unprunedTree, data, "J48 (unpruned)")
-
-    val prunedTree = new J48
-    prunedTree.setConfidenceFactor(0.1f) // Domyślnie 0.25
-
-    prunedTree.setMinNumObj(5) // Domyślnie 2
-
-    println(
-      """
-        |--- Drzewo J48 z mocnym przycinaniem ---
-        |""".stripMargin
-    )
-    evaluateAndPrintResults(prunedTree, data, "J48 (pruned C=0.1, M=5)")
+  def runExperiments(data: Instances): Unit = {
+    createClassifiers.foreach { config =>
+      evaluateAndPrintResults(config.classifier, data, config.description)
+    }
   }
 
-  /** Uruchamia serię eksperymentów klasyfikacyjnych na danym zbiorze danych. */
-  private def runExperiments(data: Instances): Unit = {
-    // 1. Naiwny Klasyfikator Bayesa
-    evaluateAndPrintResults(new NaiveBayes, data, "Naive Bayes")
+  def evaluateAndPrintResults(classifier: Classifier, data: Instances, classifierName: String): Unit = {
+    println(s"\n--- Ocena dla: $classifierName ---")
 
-    // 2. Drzewo decyzyjne J48 z różnymi hiperparametrami
-    // Wariant 1: Domyślne parametry
-    val j48_default = new J48
-    evaluateAndPrintResults(j48_default, data, "J48 (default: C=0.25, M=2)")
-
-    // Wariant 2: Mniej przycinania
-    val j48_less_pruning = new J48
-    j48_less_pruning.setConfidenceFactor(0.5f) // Większa ufność -> mniej przycinania
-
-    evaluateAndPrintResults(j48_less_pruning, data, "J48 (less pruning: C=0.5, M=2)")
-
-    // Wariant 3: Więcej przycinania
-    val j48_more_pruning = new J48
-    j48_more_pruning.setConfidenceFactor(0.1f) // Mniejsza ufność -> więcej przycinania
-
-    j48_more_pruning.setMinNumObj(10) // Większa minimalna liczba obiektów w liściu
-
-    evaluateAndPrintResults(j48_more_pruning, data, "J48 (more pruning: C=0.1, M=10)")
-
-    // 3. Bonus: Bardziej zaawansowane algorytmy
-    // Las losowy (Random Forest)
-    evaluateAndPrintResults(new RandomForest, data, "Random Forest")
-
-    // Maszyna wektorów nośnych (SVM)
-    evaluateAndPrintResults(new SMO, data, "SVM (SMO)")
-  }
-
-  /** Ocenia dany klasyfikator na danym zbiorze danych przy użyciu walidacji krzyżowej i drukuje wyniki. */
-  private def evaluateAndPrintResults(classifier: Classifier, data: Instances, classifierName: String): Unit = {
-    println(
-      s"""
-        |--- Ocena dla: $classifierName ---
-        |""".stripMargin
-    )
     val eval = new Evaluation(data)
+    eval.crossValidateModel(classifier, data, config.folds, new Random(config.randomSeed))
 
-    // Używamy stałego ziarna losowego dla powtarzalności wyników
-    eval.crossValidateModel(classifier, data, FOLDS, new Random(1))
-    println(f"Dokładność (Accuracy): ${eval.pctCorrect()}%.4f%%\n")
-    println(f"Precyzja (ważona):    ${eval.weightedPrecision}%.4f\n")
-    println(f"Czułość (ważona):      ${eval.weightedRecall()}%.4f\n")
-    println(f"F1-Score (ważony):     ${eval.weightedFMeasure}%.4f\n")
-
-    // Drukowanie macierzy pomyłek
-    println(
-      s"""
-        |${eval.toMatrixString("\n=== Macierz pomyłek ===\n")}
-        |""".stripMargin
-    )
+    println(f"Dokładność (Accuracy): ${eval.pctCorrect()}%.4f%%")
+    println(f"Precyzja (ważona):     ${eval.weightedPrecision}%.4f")
+    println(f"Czułość (ważona):      ${eval.weightedRecall()}%.4f")
+    println(f"F1-Score (ważony):     ${eval.weightedFMeasure}%.4f")
+    println(s"\n${eval.toMatrixString("\n=== Macierz pomyłek ===\n")}")
   }
+}
+
+private def printDataExploration(data: Instances): Unit = {
+  println(
+    s"""
+      |=========================================
+      |KROK 1: EKSPLORACJA DANYCH
+      |=========================================
+      |Liczba instancji: ${data.numInstances()}
+      |Liczba atrybutów: ${data.numAttributes()}
+      |--- Podsumowanie zbioru danych ---
+      |${data.toSummaryString}
+      |
+      |--- Rozkład klas ---
+      |${data.attributeStats(data.classIndex()).toString}
+      |
+      |--- Lista atrybutów ---
+      |${(0 until data.numAttributes()).map(i => s"${i + 1}. ${data.attribute(i).name()}").mkString("\n")}
+      |""".stripMargin
+  )
+}
+
+private def printDataPreparation(): Unit = {
+  println(
+    """
+      |=========================================
+      |KROK 2: PRZYGOTOWANIE DANYCH
+      |=========================================
+      |Dane zostaną przetworzone na 3 sposoby:
+      |1. Dane surowe (bez przetwarzania)
+      |2. Dane znormalizowane
+      |3. Dane standaryzowane
+      |Do oceny modeli zostanie użyta walidacja krzyżowa (10-krotna).
+      |""".stripMargin
+  )
+}
+
+private def runBonusExperiments(data: Instances): Unit = {
+  println(
+    """
+      |=========================================
+      |BONUS: ŁAGODZENIE PRZEUCZENIA (J48)
+      |=========================================
+      |Porównanie drzewa bez przycinania (podatne na przeuczenie) z drzewem z agresywnym przycinaniem.
+      |""".stripMargin
+  )
+
+  val experimentRunner = new ExperimentRunner(ExperimentConfig())
+
+  val unprunedTree = new J48
+  unprunedTree.setUnpruned(true)
+  println("\n--- Drzewo J48 bez przycinania ---")
+  experimentRunner.evaluateAndPrintResults(unprunedTree, data, "J48 (unpruned)")
+
+  val prunedTree = new J48
+  prunedTree.setConfidenceFactor(0.1f)
+  prunedTree.setMinNumObj(5)
+  println("\n--- Drzewo J48 z mocnym przycinaniem ---")
+  experimentRunner.evaluateAndPrintResults(prunedTree, data, "J48 (pruned C=0.1, M=5)")
 }
