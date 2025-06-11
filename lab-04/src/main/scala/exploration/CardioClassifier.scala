@@ -8,23 +8,32 @@ import weka.classifiers.trees.{J48, RandomForest}
 import weka.core.{Instances, Utils}
 import weka.core.converters.CSVLoader
 import weka.filters.Filter
-import weka.filters.unsupervised.attribute.{Normalize, NumericToNominal, Standardize, ReplaceMissingValues}
+import weka.filters.unsupervised.attribute.{
+  Normalize,
+  NumericToNominal,
+  Remove,
+  ReplaceMissingValues,
+  Standardize
+}
 
 import java.io.File
 import java.util.{Objects, Random}
 
-
 @main
 def main(): Unit = {
   val config = ExperimentConfig()
-  val data = DataPreprocessor.loadData(config)
+  // Krok 1: Wczytanie i wstępne przefiltrowanie danych
+  val data = DataPreprocessor.loadAndFilterData(config)
 
   printDataExploration(data)
   printDataPreparation()
 
-  val (rawData, normalizedData, standardizedData) = DataPreprocessor.preprocessData(data)
+  // Krok 2: Dalsze przygotowanie danych (imputacja, skalowanie)
+  val (rawData, normalizedData, standardizedData) =
+    DataPreprocessor.preprocessData(data)
   val experimentRunner = new ExperimentRunner(config)
 
+  // Krok 3 i 4: Uruchomienie eksperymentów i ocena
   println("\n--- WYNIKI DLA DANYCH SUROWYCH ---")
   experimentRunner.runExperiments(rawData)
 
@@ -34,6 +43,7 @@ def main(): Unit = {
   println("\n--- WYNIKI DLA DANYCH STANDARYZOWANYCH ---")
   experimentRunner.runExperiments(standardizedData)
 
+  // Bonus: Eksperymenty z łagodzeniem przeuczenia
   runBonusExperiments(rawData)
 }
 
@@ -50,39 +60,66 @@ case class ClassifierConfig(
 )
 
 object DataPreprocessor {
-  def loadData(config: ExperimentConfig): Instances = {
+  def loadAndFilterData(config: ExperimentConfig): Instances = {
     val loader = new CSVLoader
     loader.setSource(
-      new File(Objects.requireNonNull(getClass.getClassLoader.getResource(config.datasetPath)).getFile)
+      new File(
+        Objects
+          .requireNonNull(
+            getClass.getClassLoader.getResource(config.datasetPath)
+          )
+          .getFile
+      )
     )
     var data = loader.getDataSet
 
-    // Find the index of the CLASS column
+    // --- MODYFIKACJA: Selekcja tylko istotnych cech diagnostycznych ---
+    val attributesToKeep = Array(
+      "LB", "AC", "FM", "UC", "DL", "DS", "DP", "ASTV", "MSTV",
+      "ALTV", "MLTV", "Width", "Min", "Max", "Nmax", "Nzeros",
+      "Mode", "Mean", "Median", "Variance", "Tendency", "CLASS"
+    )
+    // Znajdź indeksy atrybutów do zachowania (WEKA używa 1-based dla stringów)
+    val indicesToKeep =
+      attributesToKeep.map(name => data.attribute(name).index() + 1)
+
+    val removeFilter = new Remove()
+    removeFilter.setAttributeIndices(indicesToKeep.mkString(","))
+    removeFilter.setInvertSelection(
+      true
+    ) // Odwróć selekcję, aby USUNĄĆ wszystkie INNE atrybuty
+    removeFilter.setInputFormat(data)
+    data = Filter.useFilter(data, removeFilter)
+    // --- KONIEC MODYFIKACJI ---
+
+    // Znajdź indeks kolumny CLASS w *przefiltrowanych* danych
     val classIndex = data.attribute("CLASS").index()
 
-    // Convert class attribute to nominal
+    // Konwertuj atrybut klasy na nominalny
     val converter = new NumericToNominal
-    converter.setAttributeIndices(s"${classIndex + 1}") // Weka uses 1-based indexing
+    converter.setAttributeIndices(
+      s"${classIndex + 1}"
+    ) // Weka używa 1-based
     converter.setInputFormat(data)
     data = Filter.useFilter(data, converter)
 
-    // Set CLASS as the class attribute
+    // Ustaw CLASS jako atrybut decyzyjny
     data.setClassIndex(classIndex)
     data
   }
 
   def preprocessData(data: Instances): (Instances, Instances, Instances) = {
-    // Handle missing values
+    // Obsługa brakujących wartości (imputacja)
     val replacer = new ReplaceMissingValues
     replacer.setInputFormat(data)
     val cleanData = Filter.useFilter(data, replacer)
 
-    // Normalize
+    // Normalizacja
     val normalizeFilter = new Normalize
     normalizeFilter.setInputFormat(cleanData)
     val normalizedData = Filter.useFilter(cleanData, normalizeFilter)
 
-    // Standardize
+    // Standaryzacja
     val standardizeFilter = new Standardize
     standardizeFilter.setInputFormat(cleanData)
     val standardizedData = Filter.useFilter(cleanData, standardizeFilter)
@@ -94,8 +131,6 @@ object DataPreprocessor {
 class ExperimentRunner(config: ExperimentConfig) {
   private def createClassifiers: List[ClassifierConfig] = List(
     ClassifierConfig("Naive Bayes", new NaiveBayes, "Naive Bayes"),
-
-    // J48 variants
     ClassifierConfig("J48 (default)", new J48, "J48 (default: C=0.25, M=2)"),
     ClassifierConfig(
       "J48 (less pruning)", {
@@ -124,11 +159,20 @@ class ExperimentRunner(config: ExperimentConfig) {
     }
   }
 
-  def evaluateAndPrintResults(classifier: Classifier, data: Instances, classifierName: String): Unit = {
+  def evaluateAndPrintResults(
+      classifier: Classifier,
+      data: Instances,
+      classifierName: String
+  ): Unit = {
     println(s"\n--- Ocena dla: $classifierName ---")
 
     val eval = new Evaluation(data)
-    eval.crossValidateModel(classifier, data, config.folds, new Random(config.randomSeed))
+    eval.crossValidateModel(
+      classifier,
+      data,
+      config.folds,
+      new Random(config.randomSeed)
+    )
 
     println(f"Dokładność (Accuracy): ${eval.pctCorrect()}%.4f%%")
     println(f"Precyzja (ważona):     ${eval.weightedPrecision}%.4f")
@@ -142,18 +186,12 @@ private def printDataExploration(data: Instances): Unit = {
   println(
     s"""
       |=========================================
-      |KROK 1: EKSPLORACJA DANYCH
+      |KROK 1: EKSPLORACJA DANYCH (PO FILTROWANIU)
       |=========================================
       |Liczba instancji: ${data.numInstances()}
       |Liczba atrybutów: ${data.numAttributes()}
       |--- Podsumowanie zbioru danych ---
       |${data.toSummaryString}
-      |
-      |--- Rozkład klas ---
-      |${data.attributeStats(data.classIndex()).toString}
-      |
-      |--- Lista atrybutów ---
-      |${(0 until data.numAttributes()).map(i => s"${i + 1}. ${data.attribute(i).name()}").mkString("\n")}
       |""".stripMargin
   )
 }
@@ -165,7 +203,7 @@ private def printDataPreparation(): Unit = {
       |KROK 2: PRZYGOTOWANIE DANYCH
       |=========================================
       |Dane zostaną przetworzone na 3 sposoby:
-      |1. Dane surowe (bez przetwarzania)
+      |1. Dane surowe (po imputacji)
       |2. Dane znormalizowane
       |3. Dane standaryzowane
       |Do oceny modeli zostanie użyta walidacja krzyżowa (10-krotna).
@@ -194,5 +232,9 @@ private def runBonusExperiments(data: Instances): Unit = {
   prunedTree.setConfidenceFactor(0.1f)
   prunedTree.setMinNumObj(5)
   println("\n--- Drzewo J48 z mocnym przycinaniem ---")
-  experimentRunner.evaluateAndPrintResults(prunedTree, data, "J48 (pruned C=0.1, M=5)")
+  experimentRunner.evaluateAndPrintResults(
+    prunedTree,
+    data,
+    "J48 (pruned C=0.1, M=5)"
+  )
 }
