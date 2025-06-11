@@ -22,18 +22,15 @@ import java.util.{Objects, Random}
 @main
 def main(): Unit = {
   val config = ExperimentConfig()
-  // Krok 1: Wczytanie i wstępne przefiltrowanie danych
   val data = DataPreprocessor.loadAndFilterData(config)
 
   printDataExploration(data)
   printDataPreparation()
 
-  // Krok 2: Dalsze przygotowanie danych (imputacja, skalowanie)
   val (rawData, normalizedData, standardizedData) =
     DataPreprocessor.preprocessData(data)
   val experimentRunner = new ExperimentRunner(config)
 
-  // Krok 3 i 4: Uruchomienie eksperymentów i ocena
   println("\n--- WYNIKI DLA DANYCH SUROWYCH ---")
   experimentRunner.runExperiments(rawData)
 
@@ -43,7 +40,6 @@ def main(): Unit = {
   println("\n--- WYNIKI DLA DANYCH STANDARYZOWANYCH ---")
   experimentRunner.runExperiments(standardizedData)
 
-  // Bonus: Eksperymenty z łagodzeniem przeuczenia
   runBonusExperiments(rawData)
 }
 
@@ -73,53 +69,40 @@ object DataPreprocessor {
     )
     var data = loader.getDataSet
 
-    // --- MODYFIKACJA: Selekcja tylko istotnych cech diagnostycznych ---
     val attributesToKeep = Array(
       "LB", "AC", "FM", "UC", "DL", "DS", "DP", "ASTV", "MSTV",
       "ALTV", "MLTV", "Width", "Min", "Max", "Nmax", "Nzeros",
       "Mode", "Mean", "Median", "Variance", "Tendency", "CLASS"
     )
-    // Znajdź indeksy atrybutów do zachowania (WEKA używa 1-based dla stringów)
     val indicesToKeep =
       attributesToKeep.map(name => data.attribute(name).index() + 1)
 
     val removeFilter = new Remove()
     removeFilter.setAttributeIndices(indicesToKeep.mkString(","))
-    removeFilter.setInvertSelection(
-      true
-    ) // Odwróć selekcję, aby USUNĄĆ wszystkie INNE atrybuty
+    removeFilter.setInvertSelection(true)
     removeFilter.setInputFormat(data)
     data = Filter.useFilter(data, removeFilter)
-    // --- KONIEC MODYFIKACJI ---
 
-    // Znajdź indeks kolumny CLASS w *przefiltrowanych* danych
     val classIndex = data.attribute("CLASS").index()
 
-    // Konwertuj atrybut klasy na nominalny
     val converter = new NumericToNominal
-    converter.setAttributeIndices(
-      s"${classIndex + 1}"
-    ) // Weka używa 1-based
+    converter.setAttributeIndices(s"${classIndex + 1}")
     converter.setInputFormat(data)
     data = Filter.useFilter(data, converter)
 
-    // Ustaw CLASS jako atrybut decyzyjny
     data.setClassIndex(classIndex)
     data
   }
 
   def preprocessData(data: Instances): (Instances, Instances, Instances) = {
-    // Obsługa brakujących wartości (imputacja)
     val replacer = new ReplaceMissingValues
     replacer.setInputFormat(data)
     val cleanData = Filter.useFilter(data, replacer)
 
-    // Normalizacja
     val normalizeFilter = new Normalize
     normalizeFilter.setInputFormat(cleanData)
     val normalizedData = Filter.useFilter(cleanData, normalizeFilter)
 
-    // Standaryzacja
     val standardizeFilter = new Standardize
     standardizeFilter.setInputFormat(cleanData)
     val standardizedData = Filter.useFilter(cleanData, standardizeFilter)
