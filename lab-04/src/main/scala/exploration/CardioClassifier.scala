@@ -8,13 +8,7 @@ import weka.classifiers.trees.{J48, RandomForest}
 import weka.core.{Instances, Utils}
 import weka.core.converters.CSVLoader
 import weka.filters.Filter
-import weka.filters.unsupervised.attribute.{
-  Normalize,
-  NumericToNominal,
-  Remove,
-  ReplaceMissingValues,
-  Standardize
-}
+import weka.filters.unsupervised.attribute.{Normalize, NumericToNominal, Remove, ReplaceMissingValues, Standardize}
 
 import java.io.File
 import java.util.{Objects, Random}
@@ -70,9 +64,28 @@ object DataPreprocessor {
     var data = loader.getDataSet
 
     val attributesToKeep = Array(
-      "LB", "AC", "FM", "UC", "DL", "DS", "DP", "ASTV", "MSTV",
-      "ALTV", "MLTV", "Width", "Min", "Max", "Nmax", "Nzeros",
-      "Mode", "Mean", "Median", "Variance", "Tendency", "CLASS"
+      "LB",
+      "AC",
+      "FM",
+      "UC",
+      "DL",
+      "DS",
+      "DP",
+      "ASTV",
+      "MSTV",
+      "ALTV",
+      "MLTV",
+      "Width",
+      "Min",
+      "Max",
+      "Nmax",
+      "Nzeros",
+      "Mode",
+      "Mean",
+      "Median",
+      "Variance",
+      "Tendency",
+      "CLASS"
     )
     val indicesToKeep =
       attributesToKeep.map(name => data.attribute(name).index() + 1)
