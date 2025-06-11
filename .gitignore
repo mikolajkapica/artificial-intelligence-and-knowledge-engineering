@@ -2,7 +2,7 @@
 # Ignore everything but code style settings and run configurations
 # that are supposed to be shared within teams.
 
-.idea/*
+**/.idea/*
 
 !.idea/codeStyles
 !.idea/runConfigurations
@@ -159,3 +159,5 @@ gradle-app.setting
 
 # Local History for Visual Studio Code
 .history/
+
+.cursor/
