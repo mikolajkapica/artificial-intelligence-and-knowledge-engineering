@@ -1,0 +1,14 @@
+[project]
+name = "face-verification"
+version = "0.1.0"
+description = "Face verification using MLP and face embeddings"
+authors = [{ name = "Mikołaj Kapica", email = "mikolajkapica7@gmail.com" }]
+dependencies = [
+    # torch, torchvision, torchaudio are installed manually
+    "facenet-pytorch>=2.6.0",
+    "ipykernel>=6.29.5",
+    "matplotlib>=3.10.3",
+    "pandas>=2.3.0",
+    "pillow>=10.2.0",
+    "scikit-learn>=1.7.0",
+]
